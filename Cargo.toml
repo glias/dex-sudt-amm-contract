@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "contracts/sudt-swap-lock-script",
+    "contracts/sudt-liquidity-lock-script",
+    "contracts/sudt-info-lock-script",
+    "contracts/sudt-info-type-script",
+    "dynamic-loading",
+    "share",
+    "natives"
+]
+
+[profile.release]
+overflow-checks = true
+opt-level = 2
+lto = true
+codegen-units = 1
+panic = 'abort'

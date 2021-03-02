@@ -11,3 +11,5 @@
 /test/src/schema/generated/*
 
 !.gitkeep
+
+.DS_Store
