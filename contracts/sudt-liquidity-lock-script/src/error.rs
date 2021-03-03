@@ -10,7 +10,7 @@ pub enum Error {
     LengthNotEnough,
     Encoding,
     MissingTypeScript = 5,
-    NoInfoCell,
+    CancelFailed,
 }
 
 impl From<SysError> for Error {
