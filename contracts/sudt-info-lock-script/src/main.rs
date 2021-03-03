@@ -61,7 +61,7 @@ fn main() -> Result<(), Error> {
 
         3 => {
             // sudt <-> sudt
-            let pool_y_type_hash = get_cell_type_hash!(2, Source::GroupInput)?;
+            let pool_y_type_hash = get_cell_type_hash!(2, Source::GroupInput);
             if blake2b!(pool_x_type_hash, pool_y_type_hash) != self_args[0..32] {
                 return Err(Error::PoolTypeHashMismatch);
             }

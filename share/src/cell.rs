@@ -68,7 +68,7 @@ impl MintLiquidityRequestCell {
         user_lock_hash.copy_from_slice(&cell_raw_data[32..64]);
         let version = decode_u8(&cell_raw_data[64..65])?;
         let mut req_sudt_x_cell_lock_hash = [0u8; 32];
-        req_sudt_x_cell_lock_hash.copy_from_slice(&cell_raw_data[65..97])?;
+        req_sudt_x_cell_lock_hash.copy_from_slice(&cell_raw_data[65..97]);
 
         Ok(MintLiquidityRequestCell {
             info_type_hash,
@@ -126,7 +126,7 @@ impl InfoCellData {
         check_args_len(cell_raw_data.len(), INFO_CELL_DATA_LEN)?;
 
         let sudt_x_reserve = decode_u128(&cell_raw_data[0..16])?;
-        let sudt_reserve = decode_u128(&cell_raw_data[16..32])?;
+        let sudt_y_reserve = decode_u128(&cell_raw_data[16..32])?;
         let total_liquidity = decode_u128(&cell_raw_data[32..48])?;
         let mut liquidity_sudt_type_hash = [0u8; 32];
         liquidity_sudt_type_hash.copy_from_slice(&cell_raw_data[48..80]);
