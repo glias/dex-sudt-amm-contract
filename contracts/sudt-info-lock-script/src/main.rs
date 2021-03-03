@@ -41,20 +41,37 @@ fn program_entry() -> i8 {
 }
 
 fn main() -> Result<(), Error> {
-    if QueryIter::new(load_cell, Source::GroupInput).count() != 2 {
-        return Err(Error::InvalidInfoCellCount);
-    }
+    let group_count = QueryIter::new(load_cell, Source::GroupInput).count();
 
-    let pool_type_hash = get_cell_type_hash!(1, Source::Input);
+    let info_type_hash = get_cell_type_hash!(0, Source::GroupInput);
+    let pool_x_type_hash = get_cell_type_hash!(1, Source::GroupInput);
     let self_args: Vec<u8> = load_script()?.args().unpack();
-    let hash = blake2b!("ckb", pool_type_hash);
 
-    if hash != self_args[0..32] {
-        return Err(Error::InfoLockArgsFrontHalfMismatch);
-    }
+    match group_count {
+        2 => {
+            // ckb <-> sudt
+            if blake2b!("ckb", pool_x_type_hash) != self_args[0..32] {
+                return Err(Error::PoolTypeHashMismatch);
+            }
 
-    if get_cell_type_hash!(0, Source::Input) != self_args[32..64] {
-        return Err(Error::InfoLockArgsSecondHalfMismatch);
+            if info_type_hash != self_args[32..64] {
+                return Err(Error::InfoTypeHashMismatch);
+            }
+        }
+
+        3 => {
+            // sudt <-> sudt
+            let pool_y_type_hash = get_cell_type_hash!(2, Source::GroupInput)?;
+            if blake2b!(pool_x_type_hash, pool_y_type_hash) != self_args[0..32] {
+                return Err(Error::PoolTypeHashMismatch);
+            }
+
+            if info_type_hash != self_args[32..64] {
+                return Err(Error::InfoTypeHashMismatch);
+            }
+        }
+
+        _ => return Err(Error::InvalidInfoCellCount),
     }
 
     Ok(())

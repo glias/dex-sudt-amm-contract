@@ -10,8 +10,8 @@ pub enum Error {
     Encoding,
     MissingTypeScript = 5,
     InvalidInfoCellCount,
-    InfoLockArgsFrontHalfMismatch,
-    InfoLockArgsSecondHalfMismatch,
+    PoolTypeHashMismatch,
+    InfoTypeHashMismatch,
 }
 
 impl From<SysError> for Error {

@@ -31,7 +31,7 @@ impl LiquidityRequestLockArgs {
         let mut user_lock_hash = [0u8; 32];
         user_lock_hash.copy_from_slice(&cell_raw_data[32..64]);
         let version = decode_u8(&cell_raw_data[64..65])?;
-        let sudt_x_min = decode_u128(&cell_raw_data[64..81])?;
+        let sudt_x_min = decode_u128(&cell_raw_data[65..81])?;
         let sudt_y_min = decode_u128(&cell_raw_data[81..97])?;
         let tips_ckb = decode_u64(&cell_raw_data[97..105])?;
         let tips_sudt_x = decode_u128(&cell_raw_data[105..121])?;
@@ -125,7 +125,7 @@ impl InfoCellData {
     pub fn from_raw(cell_raw_data: &[u8]) -> Result<InfoCellData, Error> {
         check_args_len(cell_raw_data.len(), INFO_CELL_DATA_LEN)?;
 
-        let sudt_x_reserve = decode_u128(&cell_raw_data[..16])?;
+        let sudt_x_reserve = decode_u128(&cell_raw_data[0..16])?;
         let sudt_reserve = decode_u128(&cell_raw_data[16..32])?;
         let total_liquidity = decode_u128(&cell_raw_data[32..48])?;
         let mut liquidity_sudt_type_hash = [0u8; 32];
@@ -148,7 +148,7 @@ pub struct SUDTAmountData {
 impl SUDTAmountData {
     pub fn from_raw(cell_raw_data: &[u8]) -> Result<Self, Error> {
         check_args_len(cell_raw_data.len(), SUDT_AMOUNT_DATA_LEN)?;
-        let sudt_amount = decode_u128(&cell_raw_data[..16])?;
+        let sudt_amount = decode_u128(&cell_raw_data[0..16])?;
 
         Ok(SUDTAmountData { sudt_amount })
     }
