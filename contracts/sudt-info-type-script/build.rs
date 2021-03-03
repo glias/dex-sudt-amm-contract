@@ -11,9 +11,9 @@ const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
 fn main() {
     let path = if cfg!(debug_assertions) {
-        Path::new("../../build/debug/info-lock-script")
+        Path::new("../../build/debug/sudt-info-lock-script")
     } else {
-        Path::new("../../build/release/info-lock-script")
+        Path::new("../../build/release/sudt-info-lock-script")
     };
 
     let info_lock_bin = Bytes::from(fs::read(path).unwrap());

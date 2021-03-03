@@ -9,17 +9,17 @@ version = "0.4.4 87bd895"
 deployment = "deployment.toml"
 
 [[contracts]]
-name = "swap-lock-script"
+name = "sudt-swap-lock-script"
 template_type = "Rust"
 
 [[contracts]]
-name = "liquidity-lock-script"
+name = "sudt-liquidity-lock-script"
 template_type = "Rust"
 
 [[contracts]]
-name = "info-lock-script"
+name = "sudt-info-lock-script"
 template_type = "Rust"
 
 [[contracts]]
-name = "info-type-script"
+name = "sudt-info-type-script"
 template_type = "Rust"

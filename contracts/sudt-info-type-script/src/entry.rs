@@ -26,7 +26,7 @@ use crate::error::Error;
 const ONE: u128 = 1;
 const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
-const POOL_CAPACITY: u128 = 18_600_000_000;
+const POOL_CAPACITY: u128 = 16_200_000_000;
 const SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
 const INFO_VERSION: u8 = 1;
