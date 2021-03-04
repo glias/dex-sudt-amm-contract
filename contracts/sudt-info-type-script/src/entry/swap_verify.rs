@@ -2,20 +2,18 @@ use alloc::vec::Vec;
 
 use num_bigint::BigUint;
 use share::cell::SwapRequestLockArgs;
-use share::ckb_std::ckb_types::packed::CellOutput;
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::*,
-    high_level::{load_cell, load_cell_data, load_cell_lock_hash},
+    high_level::{load_cell, load_cell_data},
 };
 use share::{decode_u128, get_cell_type_hash};
 
-use crate::entry::utils::verify_ckb_cell;
-use crate::entry::{FEE_RATE, MIN_SUDT_CAPACITY, ONE, THOUSAND};
+use crate::entry::utils::{verify_ckb_cell, verify_sudt_basic};
+use crate::entry::{FEE_RATE, ONE, THOUSAND};
 use crate::error::Error;
 
 pub fn swap_tx_verification(
-    info_in_cell: &CellOutput,
     swap_cell_count: usize,
     sudt_x_reserve: &mut u128,
     sudt_y_reserve: &mut u128,
@@ -31,7 +29,7 @@ pub fn swap_tx_verification(
         let req_type_hash = get_cell_type_hash!(idx, Source::Input);
         let sudt_out_cell = load_cell(idx, Source::Output)?;
         let sudt_out_type_hash = get_cell_type_hash!(idx, Source::Output);
-
+        let sudt_out_data = load_cell_data(idx, Source::Output)?;
         let user_lock_hash = req_lock_args.user_lock_hash;
 
         if req_type_hash != pool_x_type_hash && req_type_hash != pool_y_type_hash {
@@ -52,16 +50,10 @@ pub fn swap_tx_verification(
             return Err(Error::InvalidSUDTOutTypeHash);
         }
 
-        if sudt_out_cell.capacity().unpack() != MIN_SUDT_CAPACITY {
-            return Err(Error::InvalidSUDTOutCapacity);
-        }
+        verify_sudt_basic(idx, &sudt_out_cell, &sudt_out_data, user_lock_hash)?;
 
         if sudt_out_type_hash != req_lock_args.sudt_type_hash {
             return Err(Error::InvalidSUDTOutTypeHash);
-        }
-
-        if load_cell_lock_hash(idx, Source::Output)? != user_lock_hash {
-            return Err(Error::InvalidSUDTOutLockHash);
         }
 
         verify_ckb_cell(idx + 1, Source::Output, user_lock_hash)?;
@@ -78,6 +70,7 @@ pub fn swap_tx_verification(
             // SUDT_X => SUDT_Y
             x_exchange_y(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         } else {
+            // SUDT_Y => SUDT_X
             y_exchange_x(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         }
     }

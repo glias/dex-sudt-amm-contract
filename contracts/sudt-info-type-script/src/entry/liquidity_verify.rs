@@ -11,7 +11,7 @@ use share::ckb_std::{
 };
 use share::{decode_u128, get_cell_type_hash};
 
-use crate::entry::utils::verify_ckb_cell;
+use crate::entry::utils::{verify_ckb_cell, verify_sudt_basic};
 use crate::entry::{MIN_SUDT_CAPACITY, ONE};
 use crate::error::Error;
 
@@ -20,7 +20,6 @@ pub fn liquidity_tx_verification(
     add_liquidity_count: usize,
     input_cell_count: usize,
     info_in_data: InfoCellData,
-    liquidity_sudt_type_hash: [u8; 32],
     sudt_x_reserve: &mut u128,
     sudt_y_reserve: &mut u128,
     total_liquidity: &mut u128,
@@ -39,7 +38,7 @@ pub fn liquidity_tx_verification(
     let info_type_hash = get_cell_type_hash!(0, Source::Input);
 
     for abs_idx in (0..add_liquidity_count * 2).step_by(2) {
-        let real_idx_input = abs_idx + add_input_base;
+        let real_idx_input = add_input_base + abs_idx;
         let real_idx_output = add_output_base + (abs_idx / 2) * 3;
 
         mint_liquidity(
@@ -317,7 +316,6 @@ fn mint_liquidity(
         x_exhausted(
             amount_x,
             amount_y,
-            amount_x_min,
             amount_y_min,
             amount_change,
             amount_lp,
@@ -330,7 +328,6 @@ fn mint_liquidity(
             amount_x,
             amount_y,
             amount_x_min,
-            amount_y_min,
             amount_change,
             amount_lp,
             sudt_x_reserve,
@@ -347,7 +344,6 @@ fn mint_liquidity(
 fn x_exhausted(
     amount_x: u128,
     amount_y: u128,
-    amount_x_min: u128,
     amount_y_min: u128,
     amount_change: u128,
     amount_lp: u128,
@@ -382,7 +378,6 @@ fn y_exhausted(
     amount_x: u128,
     amount_y: u128,
     amount_x_min: u128,
-    amount_y_min: u128,
     amount_change: u128,
     amount_lp: u128,
     sudt_x_reserve: &mut u128,
@@ -447,24 +442,6 @@ fn verify_sudt_change_output(
         && sudt_change_type_hash != get_cell_type_hash!(input_idx + 1, Source::Input)
     {
         return Err(Error::InvalidSUDTChangeTypeHash);
-    }
-    Ok(())
-}
-
-fn verify_sudt_basic(
-    idx: usize,
-    sudt_cell: &CellOutput,
-    sudt_data: &[u8],
-    user_lock_hash: [u8; 32],
-) -> Result<(), Error> {
-    if sudt_cell.capacity().unpack() != MIN_SUDT_CAPACITY {
-        return Err(Error::InvalidSUDTCapacity);
-    }
-    if sudt_data.len() < 16 {
-        return Err(Error::InvalidSUDTDataLen);
-    }
-    if load_cell_lock_hash(idx, Source::Output)? != user_lock_hash {
-        return Err(Error::InvalidSUDTLockHash);
     }
     Ok(())
 }

@@ -48,7 +48,7 @@ fn main() -> Result<(), Error> {
 
     match group_count {
         2 => {
-            // ckb <-> sudt
+            // CKB <-> SUDT
             if blake2b!("ckb", pool_x_type_hash) != self_args[0..32] {
                 return Err(Error::PoolTypeHashMismatch);
             }
@@ -59,7 +59,7 @@ fn main() -> Result<(), Error> {
         }
 
         3 => {
-            // sudt <-> sudt
+            // SUDT <-> CKB
             let pool_y_type_hash = get_cell_type_hash!(2, Source::GroupInput);
             if blake2b!(pool_x_type_hash, pool_y_type_hash) != self_args[0..32] {
                 return Err(Error::PoolTypeHashMismatch);

@@ -28,10 +28,10 @@ const ONE: u128 = 1;
 const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
 const POOL_CAPACITY: u64 = 16_200_000_000;
-const SUDT_CAPACITY: u64 = 14_200_000_000;
+// const SUDT_CAPACITY: u64 = 14_200_000_000;
 const MIN_SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
-const INFO_VERSION: u8 = 1;
+// const INFO_VERSION: u8 = 1;
 
 pub static INFO_LOCK_CODE_HASH: &str =
     include!(concat!(env!("OUT_DIR"), "/info_lock_code_hash.rs"));
@@ -93,7 +93,6 @@ pub fn main() -> Result<(), Error> {
     let mut sudt_x_reserve = info_in_data.sudt_x_reserve;
     let mut sudt_y_reserve = info_in_data.sudt_y_reserve;
     let mut total_liquidity = info_in_data.total_liquidity;
-    let liquidity_sudt_type_hash = info_in_data.liquidity_sudt_type_hash;
 
     let raw_witness: Vec<u8> = load_witness_args(0, Source::Input)?
         .input_type()
@@ -107,14 +106,13 @@ pub fn main() -> Result<(), Error> {
 
     if input_cell_count == 6 && output_cell_count == 6 {
         liquidity_verify::verify_initial_mint(
-            liquidity_sudt_type_hash,
+            info_in_data.liquidity_sudt_type_hash,
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
             &mut total_liquidity,
         )?;
     } else {
         swap_verify::swap_tx_verification(
-            &info_out_cell,
             swap_cell_count,
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
@@ -125,7 +123,6 @@ pub fn main() -> Result<(), Error> {
             add_liquidity_count,
             input_cell_count,
             info_in_data,
-            liquidity_sudt_type_hash,
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
             &mut total_liquidity,
