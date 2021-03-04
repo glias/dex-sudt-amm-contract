@@ -116,16 +116,19 @@ pub fn main() -> Result<(), Error> {
         swap_verify::swap_tx_verification(
             &info_out_cell,
             swap_cell_count,
-            &mut ckb_reserve,
-            &mut sudt_reserve,
+            &mut sudt_x_reserve,
+            &mut sudt_y_reserve,
         )?;
 
         liquidity_verify::liquidity_tx_verification(
             swap_cell_count,
-            &mut ckb_reserve,
-            &mut sudt_reserve,
-            &mut total_liquidity,
+            add_liquidity_count,
+            input_cell_count,
+            info_in_data,
             liquidity_sudt_type_hash,
+            &mut sudt_x_reserve,
+            &mut sudt_y_reserve,
+            &mut total_liquidity,
         )?;
     }
 

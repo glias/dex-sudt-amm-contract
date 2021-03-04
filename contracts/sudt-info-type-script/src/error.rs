@@ -95,6 +95,21 @@ pub enum Error {
     InvalidSUDTOutTypeHash,
     InvalidSUDTOutCapacity,
     InvalidSUDTOutLockHash,
+    TotalLiquidityIsZero,
+    InvalidLiquidityReqXTypeHash,
+    InvalidLiquidityReqYTypeHash,
+    InvalidLiquidityReqXDataLen,
+    InvalidLiquidityReqYDataLen,
+    InvalidLiquidityReqXLockHash,
+    InvalidLiquidityReqYLockHash,
+    InvalidLiquidityReqYLockArgsXLockHash,
+    InvalidSUDTChangeCapacity,
+    InvalidSUDTChangeDataLen,
+    InvalidSUDTChangeTypeHash,
+    InvalidSUDTChangeLockHash,
+    InvalidXAmount,
+    InvalidYAmount,
+    InvalidLiquidityAmount,
 }
 
 impl From<SysError> for Error {

@@ -17,12 +17,14 @@ use crate::error::Error;
 pub fn swap_tx_verification(
     info_in_cell: &CellOutput,
     swap_cell_count: usize,
-    pool_x_type_hash: [u8; 32],
-    pool_y_type_hash: [u8; 32],
     sudt_x_reserve: &mut u128,
     sudt_y_reserve: &mut u128,
 ) -> Result<(), Error> {
-    for idx in 3..(3 + swap_cell_count) {
+    // Todo: perf
+    let pool_x_type_hash = get_cell_type_hash!(1, Source::Input);
+    let pool_y_type_hash = get_cell_type_hash!(2, Source::Input);
+
+    for idx in 4..(4 + swap_cell_count) {
         let req_cell = load_cell(idx, Source::Input)?;
         let raw_lock_args: Vec<u8> = req_cell.lock().args().unpack();
         let req_lock_args = SwapRequestLockArgs::from_raw(&raw_lock_args)?;
