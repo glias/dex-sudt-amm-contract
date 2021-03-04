@@ -51,14 +51,14 @@ impl LiquidityRequestLockArgs {
 }
 
 #[derive(Debug)]
-pub struct MintLiquidityRequestCell {
+pub struct MintLiquidityRequestLockArgs {
     pub info_type_hash:            [u8; 32],
     pub user_lock_hash:            [u8; 32],
     pub version:                   u8,
     pub req_sudt_x_cell_lock_hash: [u8; 32],
 }
 
-impl MintLiquidityRequestCell {
+impl MintLiquidityRequestLockArgs {
     pub fn from_raw(cell_raw_data: &[u8]) -> Result<Self, Error> {
         check_args_len(cell_raw_data.len(), MINT_LIQUIDITY_ARGS_LEN)?;
 
@@ -70,7 +70,7 @@ impl MintLiquidityRequestCell {
         let mut req_sudt_x_cell_lock_hash = [0u8; 32];
         req_sudt_x_cell_lock_hash.copy_from_slice(&cell_raw_data[65..97]);
 
-        Ok(MintLiquidityRequestCell {
+        Ok(MintLiquidityRequestLockArgs {
             info_type_hash,
             user_lock_hash,
             version,

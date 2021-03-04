@@ -1,6 +1,6 @@
 mod liquidity_verify;
 mod swap_verify;
-mod type_id;
+mod utils;
 
 use alloc::vec::Vec;
 use core::result::Result;
@@ -29,6 +29,7 @@ const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
 const POOL_CAPACITY: u64 = 16_200_000_000;
 const SUDT_CAPACITY: u64 = 14_200_000_000;
+const MIN_SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
 const INFO_VERSION: u8 = 1;
 
@@ -101,13 +102,14 @@ pub fn main() -> Result<(), Error> {
         .unpack();
     let swap_cell_count = decode_u64(&raw_witness[0..16])? as usize;
     let add_liquidity_count = decode_u64(&raw_witness[16..32])? as usize;
+    let input_cell_count = QueryIter::new(load_cell, Source::Input).count();
     let output_cell_count = QueryIter::new(load_cell, Source::Output).count();
 
-    if output_cell_count == 4 && swap_cell_count == 0 {
+    if input_cell_count == 6 && output_cell_count == 6 {
         liquidity_verify::verify_initial_mint(
             liquidity_sudt_type_hash,
-            &mut ckb_reserve,
-            &mut sudt_reserve,
+            &mut sudt_x_reserve,
+            &mut sudt_y_reserve,
             &mut total_liquidity,
         )?;
     } else {
@@ -127,6 +129,22 @@ pub fn main() -> Result<(), Error> {
         )?;
     }
 
+    verify_eventual_data(
+        info_out_data,
+        sudt_x_reserve,
+        sudt_y_reserve,
+        total_liquidity,
+    )?;
+
+    Ok(())
+}
+
+fn verify_eventual_data(
+    info_out_data: InfoCellData,
+    sudt_x_reserve: u128,
+    sudt_y_reserve: u128,
+    total_liquidity: u128,
+) -> Result<(), Error> {
     if info_out_data.sudt_x_reserve != sudt_x_reserve {
         return Err(Error::InvalidSUDTXReserve);
     }
@@ -250,10 +268,12 @@ fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Erro
 fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
     let info_lock_code_hash = hex::decode(INFO_LOCK_CODE_HASH).unwrap();
     let info_cell_in_deps_count = QueryIter::new(load_cell_type_hash, Source::CellDep)
-        .filter(|res| if let Some(hash) = res {
-            Vec::from(*hash) == info_lock_code_hash
-        } else {
-            false
+        .filter(|res| {
+            if let Some(hash) = res {
+                Vec::from(*hash) == info_lock_code_hash
+            } else {
+                false
+            }
         })
         .count();
 

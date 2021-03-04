@@ -10,131 +10,113 @@ use share::ckb_std::{
 };
 use share::{decode_u128, get_cell_type_hash};
 
-use crate::entry::{FEE_RATE, INFO_CAPACITY, ONE, SUDT_CAPACITY, THOUSAND};
+use crate::entry::utils::verify_ckb_cell;
+use crate::entry::{FEE_RATE, MIN_SUDT_CAPACITY, ONE, THOUSAND};
 use crate::error::Error;
 
 pub fn swap_tx_verification(
-    info_out_cell: &CellOutput,
+    info_in_cell: &CellOutput,
     swap_cell_count: usize,
-    ckb_reserve: &mut u128,
-    sudt_reserve: &mut u128,
+    pool_x_type_hash: [u8; 32],
+    pool_y_type_hash: [u8; 32],
+    sudt_x_reserve: &mut u128,
+    sudt_y_reserve: &mut u128,
 ) -> Result<(), Error> {
-    if info_out_cell.capacity().unpack() != INFO_CAPACITY {
-        return Err(Error::InfoCapacityDiff);
-    }
-
     for idx in 3..(3 + swap_cell_count) {
         let req_cell = load_cell(idx, Source::Input)?;
         let raw_lock_args: Vec<u8> = req_cell.lock().args().unpack();
         let req_lock_args = SwapRequestLockArgs::from_raw(&raw_lock_args)?;
-        let output_cell = load_cell(idx, Source::Output)?;
+        let req_type_hash = get_cell_type_hash!(idx, Source::Input);
+        let sudt_out_cell = load_cell(idx, Source::Output)?;
+        let sudt_out_type_hash = get_cell_type_hash!(idx, Source::Output);
 
-        if load_cell_lock_hash(idx, Source::Output)? != req_lock_args.user_lock_hash {
-            return Err(Error::InvalidOutputLockHash);
+        let user_lock_hash = req_lock_args.user_lock_hash;
+
+        if req_type_hash != pool_x_type_hash && req_type_hash != pool_y_type_hash {
+            return Err(Error::InvalidSwapReqTypeHash);
         }
 
-        if req_cell.type_().is_none() {
-            ckb_exchange_sudt(
-                idx,
-                &req_cell,
-                &req_lock_args,
-                &output_cell,
-                ckb_reserve,
-                sudt_reserve,
-            )?;
+        if load_cell_data(idx, Source::Input)?.len() < 16 {
+            return Err(Error::InvalidSwapReqDataLen);
+        }
+
+        if req_lock_args.sudt_type_hash != pool_x_type_hash
+            && req_lock_args.sudt_type_hash != pool_y_type_hash
+        {
+            return Err(Error::InvalidSwapReqLockArgsTypeHash);
+        }
+
+        if req_type_hash == sudt_out_type_hash {
+            return Err(Error::InvalidSUDTOutTypeHash);
+        }
+
+        if sudt_out_cell.capacity().unpack() != MIN_SUDT_CAPACITY {
+            return Err(Error::InvalidSUDTOutCapacity);
+        }
+
+        if sudt_out_type_hash != req_lock_args.sudt_type_hash {
+            return Err(Error::InvalidSUDTOutTypeHash);
+        }
+
+        if load_cell_lock_hash(idx, Source::Output)? != user_lock_hash {
+            return Err(Error::InvalidSUDTOutLockHash);
+        }
+
+        verify_ckb_cell(idx + 1, Source::Output, user_lock_hash)?;
+
+        let amount_in =
+            decode_u128(&load_cell_data(idx, Source::Input)?)? - req_lock_args.tips_sudt;
+        let amount_out = decode_u128(&load_cell_data(idx, Source::Output)?)?;
+
+        if req_lock_args.min_amount_out == 0 || amount_out < req_lock_args.min_amount_out {
+            return Err(Error::InvalidSwapReqLockArgsMinAmount);
+        }
+
+        if sudt_out_type_hash == pool_y_type_hash {
+            // SUDT_X => SUDT_Y
+            x_exchange_y(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         } else {
-            sudt_exchange_ckb(
-                idx,
-                &req_cell,
-                &req_lock_args,
-                &output_cell,
-                ckb_reserve,
-                sudt_reserve,
-            )?;
+            y_exchange_x(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         }
     }
 
     Ok(())
 }
 
-fn ckb_exchange_sudt(
-    index: usize,
-    req_cell: &CellOutput,
-    req_lock_args: &SwapRequestLockArgs,
-    output_cell: &CellOutput,
-    ckb_reserve: &mut u128,
-    sudt_reserve: &mut u128,
+fn x_exchange_y(
+    amount_in: u128,
+    amount_out: u128,
+    sudt_x_reserve: &mut u128,
+    sudt_y_reserve: &mut u128,
 ) -> Result<(), Error> {
-    let req_capcity = req_cell.capacity().unpack();
-    let output_capcity = output_cell.capacity().unpack();
-    let ckb_got = req_capcity - SUDT_CAPACITY;
+    let numerator = BigUint::from(amount_in) * FEE_RATE * (*sudt_y_reserve);
+    let denominator = (*sudt_x_reserve) * THOUSAND + BigUint::from(amount_in) * FEE_RATE;
 
-    if ckb_got == 0 {
-        return Err(Error::RequestCapcityEqSUDTCapcity);
+    if BigUint::from(amount_out) != numerator / denominator + ONE {
+        return Err(Error::XExchangeYFailed);
     }
 
-    if req_lock_args.sudt_type_hash != get_cell_type_hash!(index, Source::Output) {
-        return Err(Error::InvalidOutputTypeHash);
-    }
-
-    if req_capcity <= output_capcity || req_capcity - output_capcity != ckb_got {
-        return Err(Error::InvalidSwapOutputCapacity);
-    }
-
-    let sudt_paid = decode_u128(&load_cell_data(index, Source::Output)?)?;
-    if sudt_paid < req_lock_args.min_amount_out {
-        return Err(Error::SwapAmountLessThanMin);
-    }
-
-    let numerator = BigUint::from(ckb_got) * FEE_RATE * (*sudt_reserve);
-    let denominator = (*ckb_reserve) * THOUSAND + BigUint::from(ckb_got) * FEE_RATE;
-
-    if BigUint::from(sudt_paid) != numerator / denominator + ONE {
-        return Err(Error::BuySUDTFailed);
-    }
-
-    *ckb_reserve += ckb_got as u128;
-    *sudt_reserve -= sudt_paid;
+    *sudt_x_reserve += amount_in;
+    *sudt_y_reserve -= amount_out;
 
     Ok(())
 }
 
-fn sudt_exchange_ckb(
-    index: usize,
-    req_cell: &CellOutput,
-    req_lock_args: &SwapRequestLockArgs,
-    output_cell: &CellOutput,
-    ckb_reserve: &mut u128,
-    sudt_reserve: &mut u128,
+fn y_exchange_x(
+    amount_in: u128,
+    amount_out: u128,
+    sudt_x_reserve: &mut u128,
+    sudt_y_reserve: &mut u128,
 ) -> Result<(), Error> {
-    let sudt_got = decode_u128(&load_cell_data(index, Source::Input)?)?;
+    let numerator = BigUint::from(amount_in) * FEE_RATE * (*sudt_x_reserve);
+    let denominator = (*sudt_y_reserve) * THOUSAND + FEE_RATE * BigUint::from(amount_in);
 
-    if sudt_got == 0 {
-        return Err(Error::SwapInputSUDTAmountEqZero);
+    if BigUint::from(amount_out) != numerator / denominator + ONE {
+        return Err(Error::YExchangeXFailed);
     }
 
-    if output_cell.type_().is_some() {
-        return Err(Error::InvalidOutputTypeHash);
-    }
-
-    let ckb_paid = (output_cell.capacity().unpack() - req_cell.capacity().unpack()) as u128;
-    if ckb_paid < req_lock_args.min_amount_out {
-        return Err(Error::InvalidSwapOutputCapacity);
-    }
-
-    if !load_cell_data(index, Source::Output)?.is_empty() {
-        return Err(Error::InvalidSwapOutputData);
-    }
-
-    let numerator = BigUint::from(sudt_got) * FEE_RATE * (*ckb_reserve);
-    let denominator = (*sudt_reserve) * THOUSAND + FEE_RATE * BigUint::from(sudt_got);
-
-    if BigUint::from(ckb_paid) != numerator / denominator + ONE {
-        return Err(Error::SellSUDTFailed);
-    }
-
-    *ckb_reserve -= ckb_paid;
-    *sudt_reserve += sudt_got;
+    *sudt_x_reserve -= amount_out;
+    *sudt_y_reserve += amount_in;
 
     Ok(())
 }
