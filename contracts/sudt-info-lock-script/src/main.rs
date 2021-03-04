@@ -42,7 +42,6 @@ fn program_entry() -> i8 {
 
 fn main() -> Result<(), Error> {
     let group_count = QueryIter::new(load_cell, Source::GroupInput).count();
-
     let info_type_hash = get_cell_type_hash!(0, Source::GroupInput);
     let pool_x_type_hash = get_cell_type_hash!(1, Source::GroupInput);
     let self_args: Vec<u8> = load_script()?.args().unpack();

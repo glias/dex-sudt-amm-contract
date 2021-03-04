@@ -34,8 +34,8 @@ pub enum Error {
     CKBInjectAmountDiff,
     SUDTInjectAmountDiff,
     LiquidityPoolTokenDiff,
-    InfoLockArgsFrontHalfMismatch = 30,
-    InfoLockArgsSecondHalfMismatch,
+    PoolTypeHashMismatch = 30,
+    InfoTypeHashMismatch,
     InfoCreationOutputCellCountMismatch,
     InfoCellHashTypeMismatch,
     CellDataLenTooShort,
@@ -60,6 +60,10 @@ pub enum Error {
     InvalidOutputTypeHash,
     InvalidSwapOutputCapacity,
     InvalidPoolOutputData,
+    NoInfoCellInDeps,
+    SameSUDTInPair,
+    InvalidLockScriptHashType,
+    InvalidInfoCellDepsCount,
 }
 
 impl From<SysError> for Error {

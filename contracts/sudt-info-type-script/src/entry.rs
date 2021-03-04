@@ -16,17 +16,18 @@ use share::ckb_std::{
     },
     default_alloc,
     high_level::{
-        load_cell, load_cell_data, load_cell_lock_hash, load_script, load_witness_args, QueryIter,
+        load_cell, load_cell_data, load_cell_lock_hash, load_cell_type_hash, load_script,
+        load_witness_args, QueryIter,
     },
 };
-use share::{blake2b, decode_u64, get_cell_type_hash};
+use share::{blake2b, decode_u64, get_cell_type_hash, hash::blake2b_256};
 
 use crate::error::Error;
 
 const ONE: u128 = 1;
 const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
-const POOL_CAPACITY: u128 = 16_200_000_000;
+const POOL_CAPACITY: u64 = 16_200_000_000;
 const SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
 const INFO_VERSION: u8 = 1;
@@ -165,39 +166,64 @@ fn basic_verify(
 }
 
 fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
-    // Todo: ignore verify type id temporary
-    let _ = type_id::verify_type_id();
+    if info_cell_in_deps_count = QueryIter::new(load_cell_type_hash, Source::CellDep)
+        .find(|hash| hash == INFO_LOCK_CODE_HASH)
+        .is_none()
+    {
+        return Err(Error::NoInfoCellInDeps);
+    }
 
-    let info_out_lock_args: Vec<u8> = info_out_cell.lock().args().unpack();
-    let pool_type_hash = get_cell_type_hash!(1, Source::Output);
-    let output_info_lock_count = QueryIter::new(load_cell, Source::Output)
-        .filter(|cell| {
-            cell.lock().code_hash().unpack().as_ref() == hex::decode(INFO_LOCK_CODE_HASH).unwrap()
-        })
+    let info_lock_count = QueryIter::new(load_cell_data, Source::CellDep)
+        .filter(|data| blake2b_256(data) == INFO_LOCK_CODE_HASH)
         .count();
 
-    if output_info_lock_count != 2 {
-        return Err(Error::InfoCreationOutputCellCountMismatch);
+    if info_lock_count != 3 {
+        return Err(Error::InvalidInfoCellDepsCount);
     }
 
-    if info_out_cell.lock().hash_type() != HashType::Data.into() {
-        return Err(Error::InfoCellHashTypeMismatch);
+    if get_cell_type_hash!(1, Source::Output) == get_cell_type_hash!(2, Source::Output) {
+        return Err(Error::SameSUDTInPair);
     }
 
-    if info_out_lock_args[0..32] != blake2b!("ckb", pool_type_hash) {
-        return Err(Error::InfoLockArgsFrontHalfMismatch);
+    if info_out_cell.lock().hash_type() != HashType::Code {
+        return Err(Error::InvalidLockScriptHashType);
+    }
+
+    let info_out_lock_args: Vec<u8> = info_out_cell.lock().args().unpack();
+    let pool_x_type_hash = get_cell_type_hash!(1, Source::Output);
+    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output);
+
+    if info_out_lock_args[0..32] != blake2b!(pool_x_type_hash, pool_y_type_hash) {
+        return Err(Error::PoolTypeHashMismatch);
     }
 
     if info_out_lock_args[32..64] != get_cell_type_hash!(0, Source::Output) {
-        return Err(Error::InfoLockArgsSecondHalfMismatch);
+        return Err(Error::InfoTypeHashMismatch);
     }
 
-    if load_cell_lock_hash(0, Source::Output)? != load_cell_lock_hash(1, Source::Output)? {
-        return Err(Error::InfoCreationCellLockHashMismatch);
+    verify_output_pools()
+}
+
+fn verify_output_pools() -> Result<(), Error> {
+    let pool_x = load_cell(1, Source::Output)?;
+    let pool_y = load_cell(2, Source::Output)?;
+
+    if pool_x.capacity().unpack() != POOL_CAPACITY || pool_y.capacity().unpack() != POOL_CAPACITY {
+        return Err(Error::InvalidOutputPoolCapacity);
     }
 
-    if load_cell_data(1, Source::Output)?.len() < 16 {
-        return Err(Error::CellDataLenTooShort);
+    if load_cell_data(1, Source::Output)?.len() < 16
+        || load_cell_data(2, Source::Output)?.len() < 16
+    {
+        return Err(Error::InvalidPoolOutputData);
+    }
+
+    let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
+    let pool_x_lock_hash = load_cell_lock_hash(1, Source::Output)?;
+    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output)?;
+
+    if info_out_lock_hash != pool_x_lock_hash || pool_x_lock_hash != pool_y_type_hash {
+        return Err(Error::InvalidOutputLockHash);
     }
 
     Ok(())
