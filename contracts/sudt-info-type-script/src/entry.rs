@@ -49,7 +49,7 @@ pub fn main() -> Result<(), Error> {
     }
 
     if input_info_cell_count != 1 || output_info_cell_count != 1 {
-        return Err(Error::MoreThanOneLiquidityPool);
+        return Err(Error::MoreThanOneInfoCell);
     }
 
     let info_in_cell = load_cell(0, Source::Input)?;
