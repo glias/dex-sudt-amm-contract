@@ -42,36 +42,65 @@ pub fn main() -> Result<(), Error> {
     let info_type_code_hash = load_script()?.code_hash().unpack();
     let (input_info_cell_count, output_info_cell_count) = get_info_count(info_type_code_hash);
 
+    // verify info creation
     if input_info_cell_count == 0 && output_info_cell_count == 1 {
-        verify_info_creation(&load_cell(0, Source::Output)?)?;
-        return Ok(());
+        return verify_info_creation(&load_cell(0, Source::Output)?);
     }
 
     if input_info_cell_count != 1 || output_info_cell_count != 1 {
         return Err(Error::MoreThanOneLiquidityPool);
     }
 
+    let info_in_cell = load_cell(0, Source::Input)?;
     let info_in_data = InfoCellData::from_raw(&load_cell_data(0, Source::Input)?)?;
-    let pool_in_cell = load_cell(1, Source::Input)?;
-    let pool_in_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Input)?)?;
+    let pool_x_in_cell = load_cell(1, Source::Input)?;
+    let pool_x_in_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Input)?)?;
+    let pool_y_in_cell = load_cell(2, Source::Input)?;
+    let pool_y_in_data = SUDTAmountData::from_raw(&load_cell_data(2, Source::Input)?)?;
     let info_out_cell = load_cell(0, Source::Output)?;
     let info_out_data = InfoCellData::from_raw(&load_cell_data(0, Source::Output)?)?;
-    let pool_out_cell = load_cell(1, Source::Output)?;
-    let pool_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
+    let pool_x_out_cell = load_cell(1, Source::Output)?;
+    let pool_x_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
+    let pool_y_out_cell = load_cell(2, Source::Output)?;
+    let pool_y_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
 
-    let mut ckb_reserve = info_in_data.ckb_reserve;
-    let mut sudt_reserve = info_in_data.sudt_reserve;
+    let info_in_lock_hash = load_cell_lock_hash(0, Source::Input)?;
+    let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
+
+    // basic verify
+    verify_info_in(
+        &info_in_cell,
+        &info_in_data,
+        &pool_x_in_data,
+        &pool_y_in_data,
+    )?;
+
+    verify_info_out(
+        &info_out_cell,
+        &info_out_data,
+        info_in_lock_hash,
+        info_out_lock_hash,
+        &pool_x_out_data,
+        &pool_y_out_data,
+    )?;
+
+    verify_pool_in_cell(&pool_x_in_cell, 1, info_in_lock_hash)?;
+    verify_pool_in_cell(&pool_y_in_cell, 2, info_in_lock_hash)?;
+    verify_pool_out_cell(&pool_x_out_cell, 1)?;
+    verify_pool_out_cell(&pool_y_out_cell, 2)?;
+
+    let mut sudt_x_reserve = info_in_data.sudt_x_reserve;
+    let mut sudt_y_reserve = info_in_data.sudt_y_reserve;
     let mut total_liquidity = info_in_data.total_liquidity;
     let liquidity_sudt_type_hash = info_in_data.liquidity_sudt_type_hash;
-
-    basic_verify(&info_in_data, &pool_in_cell, &pool_in_data)?;
 
     let raw_witness: Vec<u8> = load_witness_args(0, Source::Input)?
         .input_type()
         .to_opt()
         .unwrap()
         .unpack();
-    let swap_cell_count = decode_u64(&raw_witness)? as usize;
+    let swap_cell_count = decode_u64(&raw_witness[0..16])? as usize;
+    let add_liquidity_count = decode_u64(&raw_witness[16..32])? as usize;
     let output_cell_count = QueryIter::new(load_cell, Source::Output).count();
 
     if output_cell_count == 4 && swap_cell_count == 0 {
@@ -98,31 +127,16 @@ pub fn main() -> Result<(), Error> {
         )?;
     }
 
-    if info_out_cell.capacity().unpack() != INFO_CAPACITY
-        || info_out_data.ckb_reserve != ckb_reserve
-    {
-        return Err(Error::InvalidCKBReserve);
+    if info_out_data.sudt_x_reserve != sudt_x_reserve {
+        return Err(Error::InvalidSUDTXReserve);
     }
 
-    if info_out_data.sudt_reserve != sudt_reserve {
-        return Err(Error::InvalidSUDTReserve);
+    if info_out_data.sudt_y_reserve != sudt_y_reserve {
+        return Err(Error::InvalidSUDTYReserve);
     }
 
     if info_out_data.total_liquidity != total_liquidity {
         return Err(Error::InvalidTotalLiquidity);
-    }
-
-    if (pool_out_cell.capacity().unpack() as u128)
-        != (pool_in_cell.capacity().unpack() as u128 + ckb_reserve - info_in_data.ckb_reserve)
-    {
-        return Err(Error::InvalidOutputPoolCapacity);
-    }
-
-    if pool_out_data.sudt_amount
-        != pool_in_data.sudt_amount + sudt_reserve - info_in_data.sudt_reserve
-        || pool_out_data.sudt_amount != info_out_data.sudt_reserve
-    {
-        return Err(Error::InvalidPoolOutputData);
     }
 
     Ok(())
@@ -149,32 +163,106 @@ fn get_info_count(info_type_code_hash: [u8; 32]) -> (usize, usize) {
     (input_count, output_count)
 }
 
-fn basic_verify(
+fn verify_info_in(
+    info_in_cell: &CellOutput,
     info_in_data: &InfoCellData,
-    pool_in_cell: &CellOutput,
-    pool_in_data: &SUDTAmountData,
+    pool_x_data: &SUDTAmountData,
+    pool_y_data: &SUDTAmountData,
 ) -> Result<(), Error> {
-    if (pool_in_cell.capacity().unpack() as u128) != POOL_CAPACITY + info_in_data.ckb_reserve {
-        return Err(Error::CKBReserveAmountDiff);
+    if info_in_cell.capacity().unpack() != INFO_CAPACITY {
+        return Err(Error::InfoCapacityDiff);
     }
 
-    if pool_in_data.sudt_amount != info_in_data.sudt_reserve {
-        return Err(Error::SUDTReserveAmountDiff);
+    if info_in_data.sudt_x_reserve != pool_x_data.sudt_amount {
+        return Err(Error::PoolXAmountDiff);
+    }
+
+    if info_in_data.sudt_y_reserve != pool_y_data.sudt_amount {
+        return Err(Error::PoolYAmountDiff);
+    }
+
+    Ok(())
+}
+
+fn verify_info_out(
+    info_out_cell: &CellOutput,
+    info_out_data: &InfoCellData,
+    info_in_lock_hash: [u8; 32],
+    info_out_lock_hash: [u8; 32],
+    pool_x_data: &SUDTAmountData,
+    pool_y_data: &SUDTAmountData,
+) -> Result<(), Error> {
+    if info_out_cell.capacity().unpack() != INFO_CAPACITY {
+        return Err(Error::InfoCapacityDiff);
+    }
+
+    if info_out_data.sudt_x_reserve != pool_x_data.sudt_amount {
+        return Err(Error::PoolXAmountDiff);
+    }
+
+    if info_out_data.sudt_y_reserve != pool_y_data.sudt_amount {
+        return Err(Error::PoolYAmountDiff);
+    }
+
+    if get_cell_type_hash!(0, Source::Input) != get_cell_type_hash!(0, Source::Output) {
+        return Err(Error::InfoCellTypeHashDiff);
+    }
+
+    if info_in_lock_hash != info_out_lock_hash {
+        return Err(Error::InfoCellLockHashDiff);
+    }
+
+    Ok(())
+}
+
+fn verify_pool_in_cell(
+    pool_cell: &CellOutput,
+    index: usize,
+    info_in_lock_hash: [u8; 32],
+) -> Result<(), Error> {
+    if pool_cell.capacity().unpack() != POOL_CAPACITY {
+        return Err(Error::InvalidPoolInCapacity);
+    }
+
+    if load_cell_lock_hash(index, Source::Input)? != info_in_lock_hash {
+        return Err(Error::InvalidPoolInLockHash);
+    }
+
+    Ok(())
+}
+
+fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Error> {
+    if pool_cell.capacity().unpack() != POOL_CAPACITY {
+        return Err(Error::InvalidPoolInCapacity);
+    }
+
+    if get_cell_type_hash!(index, Source::Input) != get_cell_type_hash!(0, Source::Output) {
+        return Err(Error::PoolCellTypeHashDiff);
+    }
+
+    if load_cell_lock_hash(index, Source::Input)? != load_cell_lock_hash(index, Source::Output)? {
+        return Err(Error::PoolCellLockHashDiff);
     }
 
     Ok(())
 }
 
 fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
-    if info_cell_in_deps_count = QueryIter::new(load_cell_type_hash, Source::CellDep)
-        .find(|hash| hash == INFO_LOCK_CODE_HASH)
-        .is_none()
-    {
+    let info_lock_code_hash = hex::decode(INFO_LOCK_CODE_HASH).unwrap();
+    let info_cell_in_deps_count = QueryIter::new(load_cell_type_hash, Source::CellDep)
+        .filter(|res| if let Some(hash) = res {
+            Vec::from(*hash) == info_lock_code_hash
+        } else {
+            false
+        })
+        .count();
+
+    if info_cell_in_deps_count == 0 {
         return Err(Error::NoInfoCellInDeps);
     }
 
     let info_lock_count = QueryIter::new(load_cell_data, Source::CellDep)
-        .filter(|data| blake2b_256(data) == INFO_LOCK_CODE_HASH)
+        .filter(|data| blake2b_256(data) == info_lock_code_hash.as_ref())
         .count();
 
     if info_lock_count != 3 {
@@ -185,7 +273,7 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
         return Err(Error::SameSUDTInPair);
     }
 
-    if info_out_cell.lock().hash_type() != HashType::Code {
+    if info_out_cell.lock().hash_type() != HashType::Code.into() {
         return Err(Error::InvalidLockScriptHashType);
     }
 
@@ -209,7 +297,7 @@ fn verify_output_pools() -> Result<(), Error> {
     let pool_y = load_cell(2, Source::Output)?;
 
     if pool_x.capacity().unpack() != POOL_CAPACITY || pool_y.capacity().unpack() != POOL_CAPACITY {
-        return Err(Error::InvalidOutputPoolCapacity);
+        return Err(Error::InvalidPoolOutCapacity);
     }
 
     if load_cell_data(1, Source::Output)?.len() < 16
@@ -220,7 +308,7 @@ fn verify_output_pools() -> Result<(), Error> {
 
     let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
     let pool_x_lock_hash = load_cell_lock_hash(1, Source::Output)?;
-    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output)?;
+    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output);
 
     if info_out_lock_hash != pool_x_lock_hash || pool_x_lock_hash != pool_y_type_hash {
         return Err(Error::InvalidOutputLockHash);
