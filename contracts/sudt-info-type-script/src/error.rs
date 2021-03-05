@@ -78,6 +78,8 @@ pub enum Error {
     InvalidXAmountOutMin,
     InvalidYAmountOutMin,
     InvalidLiquidityReqYLockArgsXUserHash,
+    InvalidPoolInDataLen,
+    InvalidPoolOutDataLen,
 }
 
 impl From<SysError> for Error {

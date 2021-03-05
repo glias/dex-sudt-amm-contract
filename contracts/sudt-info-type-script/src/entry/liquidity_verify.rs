@@ -17,6 +17,7 @@ use crate::entry::{MIN_SUDT_CAPACITY, ONE};
 use crate::error::Error;
 
 pub fn liquidity_tx_verification(
+    info_type_hash: [u8; 32],
     swap_cell_count: usize,
     add_liquidity_count: usize,
     input_cell_count: usize,
@@ -36,7 +37,6 @@ pub fn liquidity_tx_verification(
     let remove_count = input_cell_count - remove_input_base;
     let pool_x_type_hash = get_cell_type_hash!(1, Source::Input);
     let pool_y_type_hash = get_cell_type_hash!(2, Source::Input);
-    let info_type_hash = get_cell_type_hash!(0, Source::Input);
 
     for abs_idx in (0..add_liquidity_count * 2).step_by(2) {
         let real_idx_input = add_input_base + abs_idx;
@@ -96,8 +96,6 @@ pub fn verify_initial_mint(
         return Err(Error::InvalidSUDTYTypeHash);
     }
 
-    // Todo: perf
-    // let info_in_type_hash = get_cell_type_hash!(0, Source::Input);
     let req_sudt_x_cell = load_cell(4, Source::Input)?;
     let raw_sudt_x_lock_args: Vec<u8> = req_sudt_x_cell.lock().args().unpack();
     let req_sudt_x_lock_args = LiquidityRequestLockArgs::from_raw(&raw_sudt_x_lock_args)?;
@@ -210,6 +208,7 @@ fn burn_liquidity(
         user_lock_hash,
         pool_x_type_hash,
     )?;
+
     verify_sudt_in_remove_output(
         output_idx + 1,
         &sudt_y_out,

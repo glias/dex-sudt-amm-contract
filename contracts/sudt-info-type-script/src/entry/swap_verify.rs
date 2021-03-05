@@ -61,6 +61,7 @@ pub fn swap_tx_verification(
 
         let supposed_ckb_capcatiy =
             (req_cell.capacity().unpack() - MIN_SUDT_CAPACITY - req_lock_args.tips_ckb) as u128;
+
         verify_ckb_cell(
             output_idx + 1,
             Source::Output,

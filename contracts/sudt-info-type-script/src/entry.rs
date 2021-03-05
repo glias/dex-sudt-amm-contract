@@ -66,6 +66,7 @@ pub fn main() -> Result<(), Error> {
     let pool_y_out_cell = load_cell(2, Source::Output)?;
     let pool_y_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
 
+    let info_in_type_hash = get_cell_type_hash!(0, Source::Input);
     let info_in_lock_hash = load_cell_lock_hash(0, Source::Input)?;
     let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
 
@@ -80,6 +81,7 @@ pub fn main() -> Result<(), Error> {
     verify_info_out(
         &info_out_cell,
         &info_out_data,
+        info_in_type_hash,
         info_in_lock_hash,
         info_out_lock_hash,
         &pool_x_out_data,
@@ -107,6 +109,7 @@ pub fn main() -> Result<(), Error> {
 
     if input_cell_count == 6 && output_cell_count == 6 {
         liquidity_verify::verify_initial_mint(
+            info_in_type_hash,
             info_in_data.liquidity_sudt_type_hash,
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
@@ -120,6 +123,7 @@ pub fn main() -> Result<(), Error> {
         )?;
 
         liquidity_verify::liquidity_tx_verification(
+            info_in_type_hash,
             swap_cell_count,
             add_liquidity_count,
             input_cell_count,
@@ -206,6 +210,7 @@ fn verify_info_in(
 fn verify_info_out(
     info_out_cell: &CellOutput,
     info_out_data: &InfoCellData,
+    info_in_type_hash: [u8; 32],
     info_in_lock_hash: [u8; 32],
     info_out_lock_hash: [u8; 32],
     pool_x_data: &SUDTAmountData,
@@ -223,7 +228,7 @@ fn verify_info_out(
         return Err(Error::PoolYAmountDiff);
     }
 
-    if get_cell_type_hash!(0, Source::Input) != get_cell_type_hash!(0, Source::Output) {
+    if info_in_type_hash != get_cell_type_hash!(0, Source::Output) {
         return Err(Error::InfoCellTypeHashDiff);
     }
 
@@ -247,6 +252,10 @@ fn verify_pool_in_cell(
         return Err(Error::InvalidPoolInLockHash);
     }
 
+    if load_cell_data(index, Source::Input)?.len() < 16 {
+        return Err(Error::InvalidPoolInDataLen);
+    }
+
     Ok(())
 }
 
@@ -255,12 +264,16 @@ fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Erro
         return Err(Error::InvalidPoolInCapacity);
     }
 
-    if get_cell_type_hash!(index, Source::Input) != get_cell_type_hash!(0, Source::Output) {
+    if get_cell_type_hash!(index, Source::Input) != get_cell_type_hash!(index, Source::Output) {
         return Err(Error::PoolCellTypeHashDiff);
     }
 
     if load_cell_lock_hash(index, Source::Input)? != load_cell_lock_hash(index, Source::Output)? {
         return Err(Error::PoolCellLockHashDiff);
+    }
+
+    if load_cell_data(index, Source::Output)?.len() < 16 {
+        return Err(Error::InvalidPoolOutDataLen);
     }
 
     Ok(())
