@@ -29,9 +29,14 @@ pub fn verify_sudt_basic(
 pub fn verify_ckb_cell(
     index: usize,
     source: Source,
+    supposed_capcatiy: u128,
     user_lock_hash: [u8; 32],
 ) -> Result<(), Error> {
     let ckb_cell = load_cell(index, source)?;
+
+    if (ckb_cell.capacity().unpack() as u128) != supposed_capcatiy {
+        return Err(Error::InvalidCKBCapacity);
+    }
 
     if !load_cell_data(5, Source::Output)?.is_empty() {
         return Err(Error::InvalidCKBChangeData);

@@ -48,7 +48,7 @@ pub enum Error {
     InvalidCKBChangeData,
     InvalidCKBChangeType,
     InvalidCKBChangeLockHash,
-    InvalidCKBChangeCapacity,
+    InvalidCKBCapacity,
     InvalidSwapReqTypeHash = 45,
     InvalidSwapReqDataLen,
     InvalidSwapReqLockArgsTypeHash,
@@ -77,6 +77,7 @@ pub enum Error {
     InvalidYAmountOut = 70,
     InvalidXAmountOutMin,
     InvalidYAmountOutMin,
+    InvalidLiquidityReqYLockArgsXUserHash,
 }
 
 impl From<SysError> for Error {

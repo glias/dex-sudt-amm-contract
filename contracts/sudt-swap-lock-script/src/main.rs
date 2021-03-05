@@ -51,7 +51,7 @@ fn main() -> Result<(), Error> {
 
     // Cancel request
     for (idx, lock_hash) in QueryIter::new(load_cell_lock_hash, Source::Input).enumerate() {
-        if lock_hash == script_args[49..81]
+        if lock_hash == script_args[32..64]
             && load_witness_args(idx, Source::Input)?.total_size() != 0
         {
             return Ok(());
@@ -61,60 +61,25 @@ fn main() -> Result<(), Error> {
     let self_hash = load_script_hash()?;
     let req_lock_args = SwapRequestLockArgs::from_raw(&script_args)?;
 
-    for index in QueryIter::new(load_cell_lock_hash, Source::Input)
+    for abs_idx in QueryIter::new(load_cell_lock_hash, Source::Input)
         .enumerate()
-        .filter_map(|(idx, hash)| if hash == self_hash { Some(idx) } else { None })
+        .filter_map(|(idx, hash)| {
+            if hash == self_hash {
+                Some(idx - 4)
+            } else {
+                None
+            }
+        })
     {
-        let req_cell = load_cell(index, Source::Input)?;
-        let output_cell = load_cell(index, Source::Output)?;
+        let input_idx = 4 + abs_idx;
+        let output_idx = 4 + abs_idx * 2;
 
-        if load_cell_lock_hash(index, Source::Output)? != req_lock_args.user_lock_hash {
+        let req_cell = load_cell(input_idx, Source::Input)?;
+        let output_sudt_cell = load_cell(output_idx, Source::Output)?;
+        let output_ckb_cell = load_cell(output_idx + 1, Source::Output)?;
+
+        if load_cell_lock_hash(output_idx, Source::Output)? != req_lock_args.user_lock_hash {
             return Err(Error::InvalidOutputLockHash);
-        }
-
-        if req_cell.type_().is_none() {
-            // Ckb -> SUDT
-            let req_capcity = req_cell.capacity().unpack();
-            let output_capcity = output_cell.capacity().unpack();
-            let amount_in = req_capcity - SUDT_CAPACITY;
-
-            if amount_in == 0 {
-                return Err(Error::RequestCapcityEqSUDTCapcity);
-            }
-
-            if req_lock_args.sudt_type_hash != get_cell_type_hash!(index, Source::Output) {
-                return Err(Error::InvalidOutputTypeHash);
-            }
-
-            if req_capcity <= output_capcity || req_capcity - output_capcity != amount_in {
-                return Err(Error::InvalidCapacity);
-            }
-
-            if decode_u128(&load_cell_data(index, Source::Output)?)? < req_lock_args.min_amount_out
-            {
-                return Err(Error::SwapAmountLessThanMin);
-            }
-        } else {
-            // SUDT -> Ckb
-            let amount_in = decode_u128(&load_cell_data(index, Source::Input)?)?;
-
-            if amount_in == 0 {
-                return Err(Error::InputSUDTAmountEqZero);
-            }
-
-            if output_cell.type_().is_some() {
-                return Err(Error::InvalidOutputTypeHash);
-            }
-
-            if BigUint::from(output_cell.capacity().unpack())
-                < BigUint::from(req_cell.capacity().unpack()) + req_lock_args.min_amount_out
-            {
-                return Err(Error::InvalidCapacity);
-            }
-
-            if !load_cell_data(index, Source::Output)?.is_empty() {
-                return Err(Error::InvalidOutputData);
-            }
         }
     }
 

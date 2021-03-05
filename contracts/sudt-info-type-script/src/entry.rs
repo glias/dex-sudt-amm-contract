@@ -31,6 +31,7 @@ const POOL_CAPACITY: u64 = 16_200_000_000;
 // const SUDT_CAPACITY: u64 = 14_200_000_000;
 const MIN_SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
+const BASE_CELL_COUNT: usize = 4;
 // const INFO_VERSION: u8 = 1;
 
 pub static INFO_LOCK_CODE_HASH: &str =
