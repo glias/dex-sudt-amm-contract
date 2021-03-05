@@ -1,22 +1,22 @@
 [[cells]]
-name = "info-type-script"
+name = "sudt-info-type-script"
 enable_type_id = false
-location = { file = "build/release/info-type-script" }
+location = { file = "build/release/sudt-info-type-script" }
 
 [[cells]]
-name = "info-lock-script"
+name = "sudt-info-lock-script"
 enable_type_id = false
-location = { file = "build/release/info-lock-script" }
+location = { file = "build/release/sudt-info-lock-script" }
 
 [[cells]]
-name = "liquidity-lock-script"
+name = "sudt-liquidity-lock-script"
 enable_type_id = false
-location = { file = "build/release/liquidity-lock-script"}
+location = { file = "build/release/sudt-liquidity-lock-script"}
 
 [[cells]]
-name = "swap-lock-script"
+name = "sudt-swap-lock-script"
 enable_type_id = false
-location = { file = "build/release/swap-lock-script"}
+location = { file = "build/release/sudt-swap-lock-script"}
 
 # Replace with your own lock if you want to unlock deployed cells.
 # For example the secp256k1 lock
