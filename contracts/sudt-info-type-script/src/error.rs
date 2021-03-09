@@ -2,6 +2,7 @@ use share::ckb_std::error::SysError;
 use share::error::HelperError;
 
 /// Error
+#[allow(dead_code)]
 #[repr(i8)]
 #[derive(Debug)]
 pub enum Error {
