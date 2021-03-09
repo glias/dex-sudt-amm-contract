@@ -15,18 +15,16 @@ mod error;
 use alloc::vec::Vec;
 use core::result::Result;
 
-use num_bigint::BigUint;
+use share::cell::SwapRequestLockArgs;
 use share::ckb_std::{
     self,
     ckb_constants::Source,
     ckb_types::prelude::*,
     default_alloc,
     high_level::{
-        load_cell, load_cell_data, load_cell_lock_hash, load_script, load_script_hash,
-        load_witness_args, QueryIter,
+        load_cell, load_cell_lock_hash, load_script, load_script_hash, load_witness_args, QueryIter,
     },
 };
-use share::{cell::SwapRequestLockArgs, decode_u128, get_cell_type_hash};
 
 use crate::error::Error;
 

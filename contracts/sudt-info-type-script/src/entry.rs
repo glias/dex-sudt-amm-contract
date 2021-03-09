@@ -280,24 +280,7 @@ fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Erro
 }
 
 fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
-    let info_lock_code_hash = hex::decode(INFO_LOCK_CODE_HASH).unwrap();
-    let info_cell_in_deps_count = QueryIter::new(load_cell_type_hash, Source::CellDep)
-        .filter(|res| {
-            if let Some(hash) = res {
-                Vec::from(*hash) == info_lock_code_hash
-            } else {
-                false
-            }
-        })
-        .count();
-
-    if info_cell_in_deps_count == 0 {
-        return Err(Error::NoInfoCellInDeps);
-    }
-
-    let info_lock_count = QueryIter::new(load_cell_data, Source::CellDep)
-        .filter(|data| blake2b_256(data) == info_lock_code_hash.as_ref())
-        .count();
+    let info_lock_count = get_info_cell_count()?;
 
     if info_lock_count != 3 {
         return Err(Error::InvalidInfoCellDepsCount);
@@ -307,7 +290,7 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
         return Err(Error::SameSUDTInPair);
     }
 
-    if info_out_cell.lock().hash_type() != HashType::Code.into() {
+    if info_out_cell.lock().hash_type() != HashType::Code.as_byte() {
         return Err(Error::InvalidLockScriptHashType);
     }
 
@@ -324,6 +307,42 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
     }
 
     verify_output_pools()
+}
+
+fn get_info_cell_count() -> Result<usize, Error> {
+    let info_lock_code_hash = hex::decode(INFO_LOCK_CODE_HASH).unwrap();
+
+    let ret = if load_cell(0, Source::Output)?.lock().hash_type() == HashType::Code.as_byte() {
+        type_deploy(&info_lock_code_hash)?
+    } else {
+        QueryIter::new(load_cell, Source::Output)
+            .filter(|cell| cell.lock().code_hash().unpack() == info_lock_code_hash.as_ref())
+            .count()
+    };
+
+    Ok(ret)
+}
+
+fn type_deploy(info_lock_code_hash: &[u8]) -> Result<usize, Error> {
+    let mut ret = 0;
+    let info_type_code_hash = load_cell(0, Source::Output)?
+        .type_()
+        .to_opt()
+        .unwrap()
+        .code_hash()
+        .unpack();
+
+    for (idx, res) in QueryIter::new(load_cell_type_hash, Source::CellDep).enumerate() {
+        if let Some(hash) = res {
+            if hash == info_type_code_hash
+                && blake2b_256(load_cell_data(idx, Source::CellDep)?) == info_lock_code_hash
+            {
+                ret += 1;
+            }
+        }
+    }
+
+    Ok(ret)
 }
 
 fn verify_output_pools() -> Result<(), Error> {
@@ -357,8 +376,8 @@ enum HashType {
     Code,
 }
 
-impl Into<Byte> for HashType {
-    fn into(self) -> Byte {
+impl HashType {
+    fn as_byte(&self) -> Byte {
         match self {
             HashType::Data => Byte::new(0u8),
             HashType::Code => Byte::new(1u8),

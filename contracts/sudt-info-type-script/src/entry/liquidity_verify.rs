@@ -121,7 +121,6 @@ pub fn verify_initial_mint(
 
     let sudt_lp_cell = load_cell(4, Source::Output)?;
     let raw_sudt_lp_data = load_cell_data(4, Source::Output)?;
-    let ckb_change_cell = load_cell(5, Source::Output)?;
 
     verify_lp_output(
         4,

@@ -40,9 +40,9 @@ pub enum Error {
     InvalidLiquidityReqLockArgsInfoTypeHash,
     UserLockHashDiff,
     InvalidReqSUDTXLockHash = 35,
-    InvalidLpCapacity,
-    InvalidLpDataLen,
-    InvalidLpLockHash,
+    InvalidLiquidityReqYLockArgsXUserHash,
+    InvalidPoolInDataLen,
+    InvalidPoolOutDataLen,
     InvalidLpTypeHash,
     InvalidLpAmount = 40,
     InvalidCKBChangeData,
@@ -77,9 +77,6 @@ pub enum Error {
     InvalidYAmountOut = 70,
     InvalidXAmountOutMin,
     InvalidYAmountOutMin,
-    InvalidLiquidityReqYLockArgsXUserHash,
-    InvalidPoolInDataLen,
-    InvalidPoolOutDataLen,
 }
 
 impl From<SysError> for Error {
