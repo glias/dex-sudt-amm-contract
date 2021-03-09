@@ -59,13 +59,13 @@ pub fn swap_tx_verification(
             return Err(Error::InvalidSUDTOutTypeHash);
         }
 
-        let supposed_ckb_capcatiy =
+        let expected_ckb_capcatiy =
             (req_cell.capacity().unpack() - MIN_SUDT_CAPACITY - req_lock_args.tips_ckb) as u128;
 
         verify_ckb_cell(
             output_idx + 1,
             Source::Output,
-            supposed_ckb_capcatiy,
+            expected_ckb_capcatiy,
             user_lock_hash,
         )?;
 

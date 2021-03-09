@@ -29,12 +29,12 @@ pub fn verify_sudt_basic(
 pub fn verify_ckb_cell(
     index: usize,
     source: Source,
-    supposed_capcatiy: u128,
+    expected_capcatiy: u128,
     user_lock_hash: [u8; 32],
 ) -> Result<(), Error> {
     let ckb_cell = load_cell(index, source)?;
 
-    if (ckb_cell.capacity().unpack() as u128) != supposed_capcatiy {
+    if (ckb_cell.capacity().unpack() as u128) != expected_capcatiy {
         return Err(Error::InvalidCKBCapacity);
     }
 

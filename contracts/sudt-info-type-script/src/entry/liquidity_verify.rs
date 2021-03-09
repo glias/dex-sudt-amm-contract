@@ -130,7 +130,7 @@ pub fn verify_initial_mint(
         liquidity_sudt_type_hash,
     )?;
 
-    let supposed_ckb_capcatiy = BigUint::from(req_sudt_x_cell.capacity().unpack())
+    let expected_ckb_capcatiy = BigUint::from(req_sudt_x_cell.capacity().unpack())
         + req_sudt_y_cell.capacity().unpack()
         - MIN_SUDT_CAPACITY
         - req_sudt_x_lock_args.tips_ckb;
@@ -138,7 +138,7 @@ pub fn verify_initial_mint(
     verify_ckb_cell(
         5,
         Source::Output,
-        supposed_ckb_capcatiy.try_into().unwrap(),
+        expected_ckb_capcatiy.try_into().unwrap(),
         user_lock_hash,
     )?;
 
@@ -307,7 +307,7 @@ fn mint_liquidity(
         user_lock_hash,
     )?;
 
-    let supposed_ckb_capcatiy = BigUint::from(req_x_cell.capacity().unpack())
+    let expected_ckb_capcatiy = BigUint::from(req_x_cell.capacity().unpack())
         + req_y_cell.capacity().unpack()
         - 2 * MIN_SUDT_CAPACITY
         - req_x_lock_args.tips_ckb;
@@ -315,7 +315,7 @@ fn mint_liquidity(
     verify_ckb_cell(
         output_idx + 2,
         Source::Output,
-        supposed_ckb_capcatiy.try_into().unwrap(),
+        expected_ckb_capcatiy.try_into().unwrap(),
         user_lock_hash,
     )?;
 

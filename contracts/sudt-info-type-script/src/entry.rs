@@ -34,7 +34,7 @@ const INFO_CAPACITY: u64 = 25_000_000_000;
 const BASE_CELL_COUNT: usize = 4;
 // const INFO_VERSION: u8 = 1;
 
-pub static INFO_LOCK_CODE_HASH: &str =
+pub static INFO_LOCK_DATA_HASH: &str =
     include!(concat!(env!("OUT_DIR"), "/info_lock_code_hash.rs"));
 
 // Alloc 4K fast HEAP + 2M HEAP to receives PrefilledData
@@ -280,10 +280,14 @@ fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Erro
 }
 
 fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
-    let info_lock_count = get_info_cell_count()?;
+    let (info_lock_count, is_data_deploy) = get_info_cell_count()?;
 
     if info_lock_count != 3 {
-        return Err(Error::InvalidInfoCellDepsCount);
+        if is_data_deploy {
+            return Err(Error::InvalidInfoLockInOutputCount);
+        } else {
+            return Err(Error::InvalidInfoLockInDepsCount);
+        }
     }
 
     if get_cell_type_hash!(1, Source::Output) == get_cell_type_hash!(2, Source::Output) {
@@ -309,33 +313,30 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
     verify_output_pools()
 }
 
-fn get_info_cell_count() -> Result<usize, Error> {
-    let info_lock_code_hash = hex::decode(INFO_LOCK_CODE_HASH).unwrap();
+fn get_info_cell_count() -> Result<(usize, bool), Error> {
+    let info_lock_data_hash = hex::decode(INFO_LOCK_DATA_HASH).unwrap();
 
     let ret = if load_cell(0, Source::Output)?.lock().hash_type() == HashType::Code.as_byte() {
-        type_deploy(&info_lock_code_hash)?
+        let is_data_deploy = false;
+        (type_deploy(&info_lock_data_hash)?, is_data_deploy)
     } else {
-        QueryIter::new(load_cell, Source::Output)
-            .filter(|cell| cell.lock().code_hash().unpack() == info_lock_code_hash.as_ref())
-            .count()
+        let count = QueryIter::new(load_cell, Source::Output)
+            .filter(|cell| cell.lock().code_hash().unpack() == info_lock_data_hash.as_ref())
+            .count();
+        (count, true)
     };
 
     Ok(ret)
 }
 
-fn type_deploy(info_lock_code_hash: &[u8]) -> Result<usize, Error> {
+fn type_deploy(info_lock_data_hash: &[u8]) -> Result<usize, Error> {
     let mut ret = 0;
-    let info_type_code_hash = load_cell(0, Source::Output)?
-        .type_()
-        .to_opt()
-        .unwrap()
-        .code_hash()
-        .unpack();
+    let info_lock_code_hash = load_cell(0, Source::Output)?.lock().code_hash().unpack();
 
     for (idx, res) in QueryIter::new(load_cell_type_hash, Source::CellDep).enumerate() {
         if let Some(hash) = res {
-            if hash == info_type_code_hash
-                && blake2b_256(load_cell_data(idx, Source::CellDep)?) == info_lock_code_hash
+            if hash == info_lock_code_hash
+                && blake2b_256(load_cell_data(idx, Source::CellDep)?) == info_lock_data_hash
             {
                 ret += 1;
             }
