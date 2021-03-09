@@ -357,9 +357,9 @@ fn verify_output_pools() -> Result<(), Error> {
 
     let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
     let pool_x_lock_hash = load_cell_lock_hash(1, Source::Output)?;
-    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output);
+    let pool_y_lock_hash = load_cell_lock_hash(2, Source::Output)?;
 
-    if info_out_lock_hash != pool_x_lock_hash || pool_x_lock_hash != pool_y_type_hash {
+    if info_out_lock_hash != pool_x_lock_hash || pool_x_lock_hash != pool_y_lock_hash {
         return Err(Error::InvalidOutputLockHash);
     }
 
