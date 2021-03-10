@@ -68,6 +68,8 @@ pub fn main() -> Result<(), Error> {
     let info_in_type_hash = get_cell_type_hash!(0, Source::Input);
     let info_in_lock_hash = load_cell_lock_hash(0, Source::Input)?;
     let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
+    let pool_x_in_type_hash = get_cell_type_hash!(1, Source::Input);
+    let pool_y_in_type_hash = get_cell_type_hash!(2, Source::Input);
 
     // basic verify
     verify_info_in(
@@ -119,6 +121,8 @@ pub fn main() -> Result<(), Error> {
             swap_cell_count,
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
+            pool_x_in_type_hash,
+            pool_y_in_type_hash,
         )?;
 
         liquidity_verify::liquidity_tx_verification(
@@ -130,6 +134,8 @@ pub fn main() -> Result<(), Error> {
             &mut sudt_x_reserve,
             &mut sudt_y_reserve,
             &mut total_liquidity,
+            pool_x_in_type_hash,
+            pool_y_in_type_hash,
         )?;
     }
 
@@ -251,10 +257,6 @@ fn verify_pool_in_cell(
         return Err(Error::InvalidPoolInLockHash);
     }
 
-    if load_cell_data(index, Source::Input)?.len() < 16 {
-        return Err(Error::InvalidPoolInDataLen);
-    }
-
     Ok(())
 }
 
@@ -269,10 +271,6 @@ fn verify_pool_out_cell(pool_cell: &CellOutput, index: usize) -> Result<(), Erro
 
     if load_cell_lock_hash(index, Source::Input)? != load_cell_lock_hash(index, Source::Output)? {
         return Err(Error::PoolCellLockHashDiff);
-    }
-
-    if load_cell_data(index, Source::Output)?.len() < 16 {
-        return Err(Error::InvalidPoolOutDataLen);
     }
 
     Ok(())

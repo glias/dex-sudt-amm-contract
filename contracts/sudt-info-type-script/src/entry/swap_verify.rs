@@ -17,28 +17,29 @@ pub fn swap_tx_verification(
     swap_cell_count: usize,
     sudt_x_reserve: &mut u128,
     sudt_y_reserve: &mut u128,
+    pool_x_type_hash: [u8; 32],
+    pool_y_type_hash: [u8; 32],
 ) -> Result<(), Error> {
-    // Todo: perf
-    let pool_x_type_hash = get_cell_type_hash!(1, Source::Input);
-    let pool_y_type_hash = get_cell_type_hash!(2, Source::Input);
-
-    for abs_idx in 0..swap_cell_count {
-        let input_idx = BASE_CELL_COUNT + abs_idx;
-        let output_idx = BASE_CELL_COUNT + abs_idx * 2;
+    for rlt_idx in 0..swap_cell_count {
+        let input_idx = BASE_CELL_COUNT + rlt_idx;
+        let output_idx = BASE_CELL_COUNT + rlt_idx * 2;
 
         let req_cell = load_cell(input_idx, Source::Input)?;
         let raw_lock_args: Vec<u8> = req_cell.lock().args().unpack();
         let req_lock_args = SwapRequestLockArgs::from_raw(&raw_lock_args)?;
         let req_type_hash = get_cell_type_hash!(input_idx, Source::Input);
+        let user_lock_hash = req_lock_args.user_lock_hash;
+
         let sudt_out_cell = load_cell(output_idx, Source::Output)?;
         let sudt_out_type_hash = get_cell_type_hash!(output_idx, Source::Output);
         let sudt_out_data = load_cell_data(output_idx, Source::Output)?;
-        let user_lock_hash = req_lock_args.user_lock_hash;
 
+        // req.type_hash == pool_x.type_hash == pool_y.type_hash
         if req_type_hash != pool_x_type_hash && req_type_hash != pool_y_type_hash {
             return Err(Error::InvalidSwapReqTypeHash);
         }
 
+        // req.data.len >= 16
         if load_cell_data(input_idx, Source::Input)?.len() < 16 {
             return Err(Error::InvalidSwapReqDataLen);
         }
@@ -49,6 +50,7 @@ pub fn swap_tx_verification(
             return Err(Error::InvalidSwapReqLockArgsTypeHash);
         }
 
+        // swap self
         if req_type_hash == sudt_out_type_hash {
             return Err(Error::InvalidSUDTOutTypeHash);
         }

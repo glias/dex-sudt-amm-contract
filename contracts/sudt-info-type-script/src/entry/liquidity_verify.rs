@@ -25,6 +25,8 @@ pub fn liquidity_tx_verification(
     sudt_x_reserve: &mut u128,
     sudt_y_reserve: &mut u128,
     total_liquidity: &mut u128,
+    pool_x_type_hash: [u8; 32],
+    pool_y_type_hash: [u8; 32],
 ) -> Result<(), Error> {
     if *total_liquidity == 0 {
         return Err(Error::TotalLiquidityIsZero);
@@ -35,12 +37,10 @@ pub fn liquidity_tx_verification(
     let remove_input_base = 4 + swap_cell_count + add_liquidity_count * 2;
     let remove_output_base = 4 + swap_cell_count * 2 * add_liquidity_count * 3;
     let remove_count = input_cell_count - remove_input_base;
-    let pool_x_type_hash = get_cell_type_hash!(1, Source::Input);
-    let pool_y_type_hash = get_cell_type_hash!(2, Source::Input);
 
-    for abs_idx in (0..add_liquidity_count * 2).step_by(2) {
-        let real_idx_input = add_input_base + abs_idx;
-        let real_idx_output = add_output_base + (abs_idx / 2) * 3;
+    for rlt_idx in (0..add_liquidity_count * 2).step_by(2) {
+        let real_idx_input = add_input_base + rlt_idx;
+        let real_idx_output = add_output_base + (rlt_idx / 2) * 3;
 
         mint_liquidity(
             real_idx_input,
@@ -55,9 +55,9 @@ pub fn liquidity_tx_verification(
         )?;
     }
 
-    for abs_idx in 0..remove_count {
-        let real_idx_input = remove_input_base + abs_idx;
-        let real_idx_output = remove_output_base + abs_idx * 2;
+    for rlt_idx in 0..remove_count {
+        let real_idx_input = remove_input_base + rlt_idx;
+        let real_idx_output = remove_output_base + rlt_idx * 2;
 
         burn_liquidity(
             real_idx_input,
@@ -99,21 +99,25 @@ pub fn verify_initial_mint(
     let req_sudt_x_cell = load_cell(4, Source::Input)?;
     let raw_sudt_x_lock_args: Vec<u8> = req_sudt_x_cell.lock().args().unpack();
     let req_sudt_x_lock_args = LiquidityRequestLockArgs::from_raw(&raw_sudt_x_lock_args)?;
+
     let req_sudt_y_cell = load_cell(5, Source::Input)?;
     let raw_sudt_y_lock_args: Vec<u8> = req_sudt_y_cell.lock().args().unpack();
     let req_sudt_y_lock_args = MintLiquidityRequestLockArgs::from_raw(&raw_sudt_y_lock_args)?;
 
+    // info_in.type_hash == req_x.lock.args[0..32]
     if info_in_type_hash != req_sudt_x_lock_args.info_type_hash
         || info_in_type_hash != req_sudt_y_lock_args.info_type_hash
     {
         return Err(Error::InvalidLiquidityReqLockArgsInfoTypeHash);
     }
 
+    // req_x.lock.args.user_lock_hash == req_y.lock.args[32..64]
     let user_lock_hash = req_sudt_x_lock_args.user_lock_hash;
     if req_sudt_y_lock_args.user_lock_hash != user_lock_hash {
         return Err(Error::UserLockHashDiff);
     }
 
+    // req_x.lock_hash == req_y.lock.args[65..97]
     let req_sudt_x_lock_hash = load_cell_lock_hash(4, Source::Input)?;
     if req_sudt_y_lock_args.req_sudt_x_cell_lock_hash != req_sudt_x_lock_hash {
         return Err(Error::InvalidReqSUDTXLockHash);
@@ -146,7 +150,7 @@ pub fn verify_initial_mint(
         decode_u128(&load_cell_data(4, Source::Input)?)? - req_sudt_x_lock_args.tips_sudt_x;
     let amount_y_in =
         decode_u128(&load_cell_data(5, Source::Input)?)? - req_sudt_x_lock_args.tips_sudt_y;
-    let amount_lp = decode_u128(&load_cell_data(5, Source::Output)?)?;
+    let amount_lp = decode_u128(&raw_sudt_lp_data)?;
 
     if BigUint::from(amount_lp) != (BigUint::from(amount_x_in) * amount_y_in).sqrt() {
         return Err(Error::InvalidLpAmount);
@@ -183,6 +187,7 @@ fn burn_liquidity(
         return Err(Error::InvalidRemoveLpDataLen);
     }
 
+    // req_lp.type_hash == info_in.data.liquidity_sudt_type_hash
     if get_cell_type_hash!(input_idx, Source::Input) != info_in_data.liquidity_sudt_type_hash {
         return Err(Error::InvalidRemoveLpTypeHash);
     }
@@ -288,8 +293,9 @@ fn mint_liquidity(
 
     let sudt_lp_cell = load_cell(output_idx, Source::Output)?;
     let raw_sudt_lp_data = load_cell_data(output_idx, Source::Output)?;
+
     let sudt_change_cell = load_cell(output_idx + 1, Source::Output)?;
-    let raw_sudt_change_data = load_cell_data(output_idx, Source::Output)?;
+    let raw_sudt_change_data = load_cell_data(output_idx + 1, Source::Output)?;
 
     verify_lp_output(
         output_idx,
@@ -455,6 +461,7 @@ fn verify_sudt_change_output(
         user_lock_hash,
     )?;
 
+    // sudt_change.type_hash == req_x.type_hash == req_y.type_hash
     let sudt_change_type_hash = get_cell_type_hash!(output_idx, Source::Output);
     if sudt_change_type_hash != get_cell_type_hash!(input_idx, Source::Input)
         && sudt_change_type_hash != get_cell_type_hash!(input_idx + 1, Source::Input)
@@ -487,22 +494,30 @@ fn verify_add_liquidity_req_cells(
     pool_y_type_hash: [u8; 32],
     req_x_lock_hash: [u8; 32],
 ) -> Result<(), Error> {
+    // req_x.type_hash == pool_x.type_hash
     if get_cell_type_hash!(input_idx, Source::Input) != pool_x_type_hash {
         return Err(Error::InvalidLiquidityReqXTypeHash);
     }
+
+    // req_y.type_hash == pool_y.type_hash
     if get_cell_type_hash!(input_idx + 1, Source::Input) != pool_y_type_hash {
         return Err(Error::InvalidLiquidityReqYTypeHash);
     }
+
     if load_cell_data(input_idx, Source::Input)?.len() < 16 {
         return Err(Error::InvalidLiquidityReqXDataLen);
     }
+
     if load_cell_data(input_idx + 1, Source::Input)?.len() < 16 {
         return Err(Error::InvalidLiquidityReqYDataLen);
     }
 
+    // req_x.lock_hash[0..32] == info_in.type_hash
     if req_x_lock_hash[0..32] != info_type_hash {
         return Err(Error::InvalidLiquidityReqXLockHash);
     }
+
+    // req_y.lock_hash[0..32] == info_in.type_hash
     if load_cell_lock_hash(input_idx + 1, Source::Input)?[0..32] != info_type_hash {
         return Err(Error::InvalidLiquidityReqYLockHash);
     }

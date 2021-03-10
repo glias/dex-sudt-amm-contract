@@ -2,7 +2,6 @@ use share::ckb_std::error::SysError;
 use share::error::HelperError;
 
 /// Error
-#[allow(dead_code)]
 #[repr(i8)]
 #[derive(Debug)]
 pub enum Error {
@@ -42,8 +41,8 @@ pub enum Error {
     UserLockHashDiff,
     InvalidReqSUDTXLockHash = 35,
     InvalidLiquidityReqYLockArgsXUserHash,
-    InvalidPoolInDataLen,
-    InvalidPoolOutDataLen,
+    InvalidXAmountOutMin,
+    InvalidYAmountOutMin,
     InvalidLpTypeHash,
     InvalidLpAmount = 40,
     InvalidCKBChangeData,
@@ -76,8 +75,6 @@ pub enum Error {
     InvalidRemoveLpLockHash,
     InvalidXAmountOut,
     InvalidYAmountOut = 70,
-    InvalidXAmountOutMin,
-    InvalidYAmountOutMin,
 }
 
 impl From<SysError> for Error {
