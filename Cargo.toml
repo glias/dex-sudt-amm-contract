@@ -6,7 +6,8 @@ members = [
     "contracts/sudt-info-type-script",
     "dynamic-loading",
     "share",
-    "natives"
+    "natives",
+    "test"
 ]
 
 [profile.release]
