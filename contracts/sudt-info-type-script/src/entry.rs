@@ -103,8 +103,8 @@ pub fn main() -> Result<(), Error> {
         .to_opt()
         .unwrap()
         .unpack();
-    let swap_cell_count = decode_u64(&raw_witness[0..16])? as usize;
-    let add_liquidity_count = decode_u64(&raw_witness[16..32])? as usize;
+    let swap_cell_count = decode_u64(&raw_witness[0..8])? as usize;
+    let add_liquidity_count = decode_u64(&raw_witness[8..16])? as usize;
     let input_cell_count = QueryIter::new(load_cell, Source::Input).count();
     let output_cell_count = QueryIter::new(load_cell, Source::Output).count();
 
