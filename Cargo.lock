@@ -3282,7 +3282,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "test"
+name = "tests"
 version = "0.1.0"
 dependencies = [
  "blake2b-rs 0.2.0",

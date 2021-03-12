@@ -7,7 +7,7 @@ members = [
     "dynamic-loading",
     "share",
     "natives",
-    "test"
+    "tests"
 ]
 
 [profile.release]
