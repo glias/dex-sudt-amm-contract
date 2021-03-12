@@ -276,19 +276,21 @@ fn mint_liquidity(
     let req_y_cell = load_cell(req_y_index, Source::Input)?;
     let req_x_lock_hash = load_cell_lock_hash(req_x_index, Source::Input)?;
 
+    let raw_lock_args: Vec<u8> = req_x_cell.lock().args().unpack();
+    let req_x_lock_args = LiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
+    let user_lock_hash = req_x_lock_args.user_lock_hash;
+
+    let raw_lock_args: Vec<u8> = req_y_cell.lock().args().unpack();
+    let req_y_lock_args = MintLiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
+
     verify_add_liquidity_req_cells(
         input_idx,
         info_type_hash,
         pool_x_type_hash,
         pool_y_type_hash,
-        req_x_lock_hash,
+        &req_x_lock_args,  
+        &req_y_lock_args,
     )?;
-
-    let raw_lock_args: Vec<u8> = req_x_cell.lock().args().unpack();
-    let req_x_lock_args = LiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
-    let raw_lock_args: Vec<u8> = req_y_cell.lock().args().unpack();
-    let req_y_lock_args = MintLiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
-    let user_lock_hash = req_x_lock_args.user_lock_hash;
 
     if req_y_lock_args.user_lock_hash != user_lock_hash {
         return Err(Error::InvalidLiquidityReqYLockArgsXUserHash);
@@ -499,7 +501,8 @@ fn verify_add_liquidity_req_cells(
     info_type_hash: [u8; 32],
     pool_x_type_hash: [u8; 32],
     pool_y_type_hash: [u8; 32],
-    req_x_lock_hash: [u8; 32],
+    req_x_lock_args: &LiquidityRequestLockArgs,
+    req_y_lock_args: &MintLiquidityRequestLockArgs,
 ) -> Result<(), Error> {
     // req_x.type_hash == pool_x.type_hash
     if get_cell_type_hash!(input_idx, Source::Input) != pool_x_type_hash {
@@ -519,13 +522,13 @@ fn verify_add_liquidity_req_cells(
         return Err(Error::InvalidLiquidityReqYDataLen);
     }
 
-    // req_x.lock_hash[0..32] == info_in.type_hash
-    if req_x_lock_hash[0..32] != info_type_hash {
+    // req_x.lock.args[0..32] == info_in.type_hash
+    if req_x_lock_args.info_type_hash != info_type_hash {
         return Err(Error::InvalidLiquidityReqXLockHash);
     }
 
-    // req_y.lock_hash[0..32] == info_in.type_hash
-    if load_cell_lock_hash(input_idx + 1, Source::Input)?[0..32] != info_type_hash {
+    // req_y.lock.args[0..32] == info_in.type_hash
+    if req_y_lock_args.info_type_hash != info_type_hash {
         return Err(Error::InvalidLiquidityReqYLockHash);
     }
 
