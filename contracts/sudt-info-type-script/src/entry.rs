@@ -24,6 +24,9 @@ use share::{blake2b, decode_u64, get_cell_type_hash, hash::blake2b_256};
 
 use crate::error::Error;
 
+const INFO_INDEX: usize = 0;
+const POOL_X_INDEX: usize = 1;
+const POOL_Y_INDEX: usize = 2;
 const ONE: u128 = 1;
 const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
@@ -52,24 +55,24 @@ pub fn main() -> Result<(), Error> {
         return Err(Error::MoreThanOneInfoCell);
     }
 
-    let info_in_cell = load_cell(0, Source::Input)?;
-    let info_in_data = InfoCellData::from_raw(&load_cell_data(0, Source::Input)?)?;
-    let pool_x_in_cell = load_cell(1, Source::Input)?;
-    let pool_x_in_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Input)?)?;
-    let pool_y_in_cell = load_cell(2, Source::Input)?;
-    let pool_y_in_data = SUDTAmountData::from_raw(&load_cell_data(2, Source::Input)?)?;
-    let info_out_cell = load_cell(0, Source::Output)?;
+    let info_in_cell = load_cell(INFO_INDEX, Source::Input)?;
+    let info_in_data = InfoCellData::from_raw(&load_cell_data(INFO_INDEX, Source::Input)?)?;
+    let pool_x_in_cell = load_cell(POOL_X_INDEX, Source::Input)?;
+    let pool_x_in_data = SUDTAmountData::from_raw(&load_cell_data(POOL_X_INDEX, Source::Input)?)?;
+    let pool_y_in_cell = load_cell(POOL_Y_INDEX, Source::Input)?;
+    let pool_y_in_data = SUDTAmountData::from_raw(&load_cell_data(POOL_Y_INDEX, Source::Input)?)?;
+    let info_out_cell = load_cell(INFO_INDEX, Source::Output)?;
     let info_out_data = InfoCellData::from_raw(&load_cell_data(0, Source::Output)?)?;
-    let pool_x_out_cell = load_cell(1, Source::Output)?;
-    let pool_x_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
-    let pool_y_out_cell = load_cell(2, Source::Output)?;
-    let pool_y_out_data = SUDTAmountData::from_raw(&load_cell_data(1, Source::Output)?)?;
+    let pool_x_out_cell = load_cell(POOL_X_INDEX, Source::Output)?;
+    let pool_x_out_data = SUDTAmountData::from_raw(&load_cell_data(POOL_X_INDEX, Source::Output)?)?;
+    let pool_y_out_cell = load_cell(POOL_Y_INDEX, Source::Output)?;
+    let pool_y_out_data = SUDTAmountData::from_raw(&load_cell_data(POOL_Y_INDEX, Source::Output)?)?;
 
-    let info_in_type_hash = get_cell_type_hash!(0, Source::Input);
-    let info_in_lock_hash = load_cell_lock_hash(0, Source::Input)?;
-    let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
-    let pool_x_in_type_hash = get_cell_type_hash!(1, Source::Input);
-    let pool_y_in_type_hash = get_cell_type_hash!(2, Source::Input);
+    let info_in_type_hash = get_cell_type_hash!(INFO_INDEX, Source::Input);
+    let info_in_lock_hash = load_cell_lock_hash(INFO_INDEX, Source::Input)?;
+    let info_out_lock_hash = load_cell_lock_hash(INFO_INDEX, Source::Output)?;
+    let pool_x_in_type_hash = get_cell_type_hash!(POOL_X_INDEX, Source::Input);
+    let pool_y_in_type_hash = get_cell_type_hash!(POOL_Y_INDEX, Source::Input);
 
     // basic verify
     verify_info_in(
@@ -89,16 +92,16 @@ pub fn main() -> Result<(), Error> {
         &pool_y_out_data,
     )?;
 
-    verify_pool_in_cell(&pool_x_in_cell, 1, info_in_lock_hash)?;
-    verify_pool_in_cell(&pool_y_in_cell, 2, info_in_lock_hash)?;
-    verify_pool_out_cell(&pool_x_out_cell, 1)?;
-    verify_pool_out_cell(&pool_y_out_cell, 2)?;
+    verify_pool_in_cell(&pool_x_in_cell, POOL_X_INDEX, info_in_lock_hash)?;
+    verify_pool_in_cell(&pool_y_in_cell, POOL_Y_INDEX, info_in_lock_hash)?;
+    verify_pool_out_cell(&pool_x_out_cell, POOL_X_INDEX)?;
+    verify_pool_out_cell(&pool_y_out_cell, POOL_Y_INDEX)?;
 
     let mut sudt_x_reserve = info_in_data.sudt_x_reserve;
     let mut sudt_y_reserve = info_in_data.sudt_y_reserve;
     let mut total_liquidity = info_in_data.total_liquidity;
 
-    let raw_witness: Vec<u8> = load_witness_args(0, Source::Input)?
+    let raw_witness: Vec<u8> = load_witness_args(INFO_INDEX, Source::Input)?
         .input_type()
         .to_opt()
         .unwrap()
@@ -233,7 +236,7 @@ fn verify_info_out(
         return Err(Error::PoolYAmountDiff);
     }
 
-    if info_in_type_hash != get_cell_type_hash!(0, Source::Output) {
+    if info_in_type_hash != get_cell_type_hash!(INFO_INDEX, Source::Output) {
         return Err(Error::InfoCellTypeHashDiff);
     }
 
@@ -292,8 +295,8 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
     }
 
     let info_out_lock_args: Vec<u8> = info_out_cell.lock().args().unpack();
-    let pool_x_type_hash = get_cell_type_hash!(1, Source::Output);
-    let pool_y_type_hash = get_cell_type_hash!(2, Source::Output);
+    let pool_x_type_hash = get_cell_type_hash!(POOL_X_INDEX, Source::Output);
+    let pool_y_type_hash = get_cell_type_hash!(POOL_Y_INDEX, Source::Output);
 
     if info_out_lock_args[0..32] != blake2b!(pool_x_type_hash, pool_y_type_hash) {
         return Err(Error::PoolTypeHashMismatch);
@@ -309,22 +312,26 @@ fn verify_info_creation(info_out_cell: &CellOutput) -> Result<(), Error> {
 fn get_info_cell_count() -> Result<(usize, bool), Error> {
     let info_lock_data_hash = hex::decode(INFO_LOCK_DATA_HASH).unwrap();
 
-    let ret = if load_cell(0, Source::Output)?.lock().hash_type() == HashType::Code.as_byte() {
-        let is_data_deploy = false;
-        (type_deploy(&info_lock_data_hash)?, is_data_deploy)
-    } else {
-        let count = QueryIter::new(load_cell, Source::Output)
-            .filter(|cell| cell.lock().code_hash().unpack() == info_lock_data_hash.as_ref())
-            .count();
-        (count, true)
-    };
+    let ret =
+        if load_cell(INFO_INDEX, Source::Output)?.lock().hash_type() == HashType::Code.as_byte() {
+            let is_data_deploy = false;
+            (type_deploy(&info_lock_data_hash)?, is_data_deploy)
+        } else {
+            let count = QueryIter::new(load_cell, Source::Output)
+                .filter(|cell| cell.lock().code_hash().unpack() == info_lock_data_hash.as_ref())
+                .count();
+            (count, true)
+        };
 
     Ok(ret)
 }
 
 fn type_deploy(info_lock_data_hash: &[u8]) -> Result<usize, Error> {
     let mut ret = 0;
-    let info_lock_code_hash = load_cell(0, Source::Output)?.lock().code_hash().unpack();
+    let info_lock_code_hash = load_cell(INFO_INDEX, Source::Output)?
+        .lock()
+        .code_hash()
+        .unpack();
 
     for (idx, res) in QueryIter::new(load_cell_type_hash, Source::CellDep).enumerate() {
         if let Some(hash) = res {
@@ -340,22 +347,22 @@ fn type_deploy(info_lock_data_hash: &[u8]) -> Result<usize, Error> {
 }
 
 fn verify_output_pools() -> Result<(), Error> {
-    let pool_x = load_cell(1, Source::Output)?;
-    let pool_y = load_cell(2, Source::Output)?;
+    let pool_x = load_cell(POOL_X_INDEX, Source::Output)?;
+    let pool_y = load_cell(POOL_Y_INDEX, Source::Output)?;
 
     if pool_x.capacity().unpack() != POOL_CAPACITY || pool_y.capacity().unpack() != POOL_CAPACITY {
         return Err(Error::InvalidPoolOutCapacity);
     }
 
-    if load_cell_data(1, Source::Output)?.len() < 16
-        || load_cell_data(2, Source::Output)?.len() < 16
+    if load_cell_data(POOL_X_INDEX, Source::Output)?.len() < 16
+        || load_cell_data(POOL_Y_INDEX, Source::Output)?.len() < 16
     {
         return Err(Error::InvalidPoolOutputData);
     }
 
-    let info_out_lock_hash = load_cell_lock_hash(0, Source::Output)?;
-    let pool_x_lock_hash = load_cell_lock_hash(1, Source::Output)?;
-    let pool_y_lock_hash = load_cell_lock_hash(2, Source::Output)?;
+    let info_out_lock_hash = load_cell_lock_hash(INFO_INDEX, Source::Output)?;
+    let pool_x_lock_hash = load_cell_lock_hash(POOL_X_INDEX, Source::Output)?;
+    let pool_y_lock_hash = load_cell_lock_hash(POOL_Y_INDEX, Source::Output)?;
 
     if info_out_lock_hash != pool_x_lock_hash || pool_x_lock_hash != pool_y_lock_hash {
         return Err(Error::InvalidOutputLockHash);

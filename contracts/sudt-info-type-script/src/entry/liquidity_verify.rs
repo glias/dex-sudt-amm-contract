@@ -13,7 +13,7 @@ use share::ckb_std::{
 use share::{decode_u128, get_cell_type_hash};
 
 use crate::entry::utils::{verify_ckb_cell, verify_sudt_basic};
-use crate::entry::{MIN_SUDT_CAPACITY, ONE};
+use crate::entry::{MIN_SUDT_CAPACITY, ONE, POOL_X_INDEX, POOL_Y_INDEX};
 use crate::error::Error;
 
 pub fn liquidity_tx_verification(
@@ -87,12 +87,12 @@ pub fn verify_initial_mint(
     }
 
     // pool_x.type_hash == req_x.type_hash
-    if get_cell_type_hash!(1, Source::Input) != get_cell_type_hash!(4, Source::Input) {
+    if get_cell_type_hash!(POOL_X_INDEX, Source::Input) != get_cell_type_hash!(4, Source::Input) {
         return Err(Error::InvalidSUDTXTypeHash);
     }
 
     // pool_y.type_hash == req_y.type_hash
-    if get_cell_type_hash!(2, Source::Input) != get_cell_type_hash!(5, Source::Input) {
+    if get_cell_type_hash!(POOL_Y_INDEX, Source::Input) != get_cell_type_hash!(5, Source::Input) {
         return Err(Error::InvalidSUDTYTypeHash);
     }
 
