@@ -38,7 +38,7 @@ pub fn verify_ckb_cell(
         return Err(Error::InvalidCKBCapacity);
     }
 
-    if !load_cell_data(5, Source::Output)?.is_empty() {
+    if !load_cell_data(index, source)?.is_empty() {
         return Err(Error::InvalidCKBChangeData);
     }
 
@@ -46,7 +46,7 @@ pub fn verify_ckb_cell(
         return Err(Error::InvalidCKBChangeType);
     }
 
-    if load_cell_lock_hash(5, Source::Output)? != user_lock_hash {
+    if load_cell_lock_hash(index, source)? != user_lock_hash {
         return Err(Error::InvalidCKBChangeLockHash);
     }
 
