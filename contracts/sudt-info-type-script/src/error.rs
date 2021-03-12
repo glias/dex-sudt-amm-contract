@@ -72,7 +72,7 @@ pub enum Error {
     InvalidRemoveLpCapacity = 65,
     InvalidRemoveLpDataLen,
     InvalidRemoveLpTypeHash,
-    InvalidRemoveLpLockHash,
+    InvalidRemoveLpLockArgsInfoTypeHash,
     InvalidXAmountOut,
     InvalidYAmountOut = 70,
 }

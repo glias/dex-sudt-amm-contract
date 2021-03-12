@@ -193,15 +193,14 @@ fn burn_liquidity(
         return Err(Error::InvalidRemoveLpTypeHash);
     }
 
-    let req_lp_lock_hash = load_cell_lock_hash(req_index, Source::Input)?;
-    if req_lp_lock_hash[0..32] != info_type_hash {
-        return Err(Error::InvalidRemoveLpLockHash);
-    }
-
     let raw_lock_args: Vec<u8> = req_lp_cell.lock().args().unpack();
     let req_lp_lock_args = LiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
     let user_lock_hash = req_lp_lock_args.user_lock_hash;
     let tips_sudt_lp = req_lp_lock_args.tips_sudt_x;
+
+    if req_lp_lock_args.info_type_hash != info_type_hash {
+        return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash)
+    }
 
     let sudt_x_out_data = load_cell_data(sudt_x_index, Source::Output)?;
     let sudt_y_out_data = load_cell_data(sudt_y_index, Source::Output)?;
@@ -217,7 +216,7 @@ fn burn_liquidity(
     verify_sudt_in_remove_output(
         sudt_y_index,
         &sudt_y_out,
-        &sudt_x_out_data,
+        &sudt_y_out_data,
         user_lock_hash,
         pool_y_type_hash,
     )?;
