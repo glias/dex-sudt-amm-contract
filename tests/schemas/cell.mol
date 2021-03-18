@@ -1,0 +1,35 @@
+import basic;
+
+struct InfoCellData {
+    sudt_x_reserve: Uint128,
+    sudt_y_reserve: Uint128,
+    total_liquidity: Uint128,
+    liquidity_sudt_type_hash: Byte32,
+}
+
+struct LiquidityRequestLockArgs {
+    info_type_hash: Byte32,
+    user_lock_hash: Byte32,
+    version: Uint8,
+    sudt_x_min: Uint128,
+    sudt_y_min: Uint128,
+    tips_ckb: Uint64,
+    tips_sudt_x: Uint128,
+    tips_sudt_y: Uint128,
+}
+
+struct MintLiquidityRequestLockArgs {
+    info_type_hash: Byte32,
+    user_lock_hash: Byte32,
+    version: Uint8,
+    req_sudt_x_cell_lock_hash: Byte32,
+}
+
+struct SwapRequestLockArgs {
+    sudt_type_hash: Byte32,
+    user_lock_hash: Byte32,
+    version: Uint8,
+    min_amount_out: Uint128,
+    tips_sudt_x: Uint128,
+    tips_sudt_y: Uint128,
+}
