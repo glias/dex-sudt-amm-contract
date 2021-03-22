@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use ckb_dyn_lock::locks::binary::{self, Binary};
+// use ckb_dyn_lock::locks::binary::{self, Binary};
 use ckb_standalone_debugger::transaction::{
     MockCellDep, MockInfo, MockInput, MockTransaction, ReprMockTransaction,
 };
 // use ckb_system_scripts::BUNDLED_CELL;
 use ckb_testtool::{builtin::ALWAYS_SUCCESS, context::Context};
-use ckb_tool::ckb_crypto::secp::Pubkey;
+// use ckb_tool::ckb_crypto::secp::Pubkey;
 // use ckb_tool::ckb_hash::{blake2b_256, new_blake2b};
 use ckb_tool::ckb_script::{ScriptError, TransactionScriptError};
 use ckb_tool::ckb_types::core::{DepType, TransactionBuilder, TransactionView};
@@ -15,7 +15,6 @@ use ckb_tool::ckb_types::packed::*;
 use ckb_tool::ckb_types::{bytes::Bytes, prelude::*};
 use ckb_x64_simulator::RunningSetup;
 use molecule::prelude::*;
-use serde_json::to_string_pretty;
 
 use crate::cell_builder::{
     FreeCell, InfoCell, LiquidityRequestCell, MintLiquidityRequestCell, SudtCell, SwapRequestCell,
@@ -489,45 +488,45 @@ pub fn tx_error(
     }
 }
 
-struct DynLock;
+// struct DynLock;
 
-impl DynLock {
-    fn deploy(context: &mut Context) -> (OutPoint, Vec<CellDep>) {
-        let secp256k1_data_bin = binary::get(Binary::Secp256k1Data);
-        let secp256k1_data_out_point = context.deploy_cell(secp256k1_data_bin.to_vec().into());
-        let secp256k1_data_dep = CellDep::new_builder()
-            .out_point(secp256k1_data_out_point)
-            .build();
+// impl DynLock {
+//     fn deploy(context: &mut Context) -> (OutPoint, Vec<CellDep>) {
+//         let secp256k1_data_bin = binary::get(Binary::Secp256k1Data);
+//         let secp256k1_data_out_point = context.deploy_cell(secp256k1_data_bin.to_vec().into());
+//         let secp256k1_data_dep = CellDep::new_builder()
+//             .out_point(secp256k1_data_out_point)
+//             .build();
 
-        let secp256k1_keccak256_bin = binary::get(Binary::Secp256k1Keccak256SighashAllDual);
-        let secp256k1_keccak256_out_point =
-            context.deploy_cell(secp256k1_keccak256_bin.to_vec().into());
-        let secp256k1_keccak256_dep = CellDep::new_builder()
-            .out_point(secp256k1_keccak256_out_point.clone())
-            .build();
+//         let secp256k1_keccak256_bin = binary::get(Binary::Secp256k1Keccak256SighashAllDual);
+//         let secp256k1_keccak256_out_point =
+//             context.deploy_cell(secp256k1_keccak256_bin.to_vec().into());
+//         let secp256k1_keccak256_dep = CellDep::new_builder()
+//             .out_point(secp256k1_keccak256_out_point.clone())
+//             .build();
 
-        (secp256k1_keccak256_out_point, vec![
-            secp256k1_data_dep,
-            secp256k1_keccak256_dep,
-        ])
-    }
+//         (secp256k1_keccak256_out_point, vec![
+//             secp256k1_data_dep,
+//             secp256k1_keccak256_dep,
+//         ])
+//     }
 
-    fn eth_pubkey(pubkey: Pubkey) -> Bytes {
-        use sha3::{Digest, Keccak256};
+//     fn eth_pubkey(pubkey: Pubkey) -> Bytes {
+//         use sha3::{Digest, Keccak256};
 
-        let prefix_key: [u8; 65] = {
-            let mut temp = [4u8; 65];
-            temp[1..65].copy_from_slice(pubkey.as_bytes());
-            temp
-        };
-        let pubkey = secp256k1::key::PublicKey::from_slice(&prefix_key).unwrap();
-        let message = Vec::from(&pubkey.serialize_uncompressed()[1..]);
+//         let prefix_key: [u8; 65] = {
+//             let mut temp = [4u8; 65];
+//             temp[1..65].copy_from_slice(pubkey.as_bytes());
+//             temp
+//         };
+//         let pubkey = secp256k1::key::PublicKey::from_slice(&prefix_key).unwrap();
+//         let message = Vec::from(&pubkey.serialize_uncompressed()[1..]);
 
-        let mut hasher = Keccak256::default();
-        hasher.input(&message);
-        Bytes::copy_from_slice(&hasher.result()[12..32])
-    }
-}
+//         let mut hasher = Keccak256::default();
+//         hasher.input(&message);
+//         Bytes::copy_from_slice(&hasher.result()[12..32])
+//     }
+// }
 
 fn create_test_folder(name: &str) -> PathBuf {
     let mut path = TX_FOLDER.clone();
@@ -586,6 +585,8 @@ pub fn write_native_setup(
     context: &Context,
     setup: &RunningSetup,
 ) {
+    use serde_json::to_string_pretty;
+
     let folder = create_test_folder(test_name);
     let mock_tx = build_mock_transaction(&tx, &context);
     let repr_tx: ReprMockTransaction = mock_tx.into();

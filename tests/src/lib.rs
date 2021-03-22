@@ -5,14 +5,16 @@ use std::str::FromStr;
 
 use ckb_tool::ckb_types::bytes::Bytes;
 
+#[allow(dead_code)]
+pub mod tx_builder;
 pub mod cell_builder;
+pub mod utils;
+
 #[allow(dead_code)]
 mod schema;
 #[cfg(test)]
 #[allow(dead_code)]
 mod tests;
-#[allow(dead_code)]
-pub mod tx_builder;
 
 lazy_static::lazy_static! {
     static ref LOADER: Loader = Loader::default();

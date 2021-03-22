@@ -1,7 +1,4 @@
-mod sudt_info_lockscript_test;
 mod sudt_info_typescript_test;
-mod sudt_liquidity_lockscript_test;
-mod sudt_swap_lockscript_test;
 
 use std::collections::HashMap;
 
@@ -13,10 +10,9 @@ use ckb_tool::ckb_types::packed::*;
 use ckb_tool::ckb_types::prelude::*;
 use ckb_x64_simulator::RunningSetup;
 use molecule::prelude::*;
-use share::blake2b;
 
 use crate::{cell_builder::*, tx_builder::*};
-use crate::{test_contract, Loader};
+use crate::{test_contract, Loader, blake2b, utils};
 
 const MAX_CYCLES: u64 = 10000_0000;
 const POOL_CAPACITY: u64 = 18_600_000_000;
@@ -41,8 +37,8 @@ lazy_static::lazy_static! {
             .calc_script_hash()
             .unpack()
     };
-    static ref INFO_TYPE_SCRIPT: Bytes = Loader::default().load_binary("info-type-script");
-    static ref INFO_LOCK_SCRIPT: Bytes = Loader::default().load_binary("info-lock-script");
+    static ref INFO_TYPE_SCRIPT: Bytes = Loader::default().load_binary("sudt-info-type-script");
+    static ref INFO_LOCK_SCRIPT: Bytes = Loader::default().load_binary("sudt-info-lock-script");
 }
 
 #[macro_export]
