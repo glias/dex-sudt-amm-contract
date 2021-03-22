@@ -391,7 +391,7 @@ fn x_exhausted(
     if BigUint::from(amount_y_in)
         != BigUint::from(amount_x) * (*sudt_y_reserve) / (*sudt_x_reserve) + ONE
     {
-        return Err(Error::InvalidXAmountMin);
+        return Err(Error::InvalidYAmountMin);
     }
 
     if BigUint::from(amount_lp)
@@ -424,7 +424,7 @@ fn y_exhausted(
     if BigUint::from(amount_x_in)
         != BigUint::from(amount_y) * (*sudt_x_reserve) / (*sudt_y_reserve) + ONE
     {
-        return Err(Error::InvalidXAmountMin);
+        return Err(Error::InvalidXAmountIn);
     }
 
     if BigUint::from(amount_lp)
