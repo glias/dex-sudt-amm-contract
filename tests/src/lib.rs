@@ -5,9 +5,9 @@ use std::str::FromStr;
 
 use ckb_tool::ckb_types::bytes::Bytes;
 
+pub mod cell_builder;
 #[allow(dead_code)]
 pub mod tx_builder;
-pub mod cell_builder;
 pub mod utils;
 
 #[allow(dead_code)]

@@ -199,7 +199,7 @@ fn burn_liquidity(
     let tips_sudt_lp = req_lp_lock_args.tips_sudt_x;
 
     if req_lp_lock_args.info_type_hash != info_type_hash {
-        return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash)
+        return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash);
     }
 
     let sudt_x_out_data = load_cell_data(sudt_x_index, Source::Output)?;
@@ -287,7 +287,7 @@ fn mint_liquidity(
         info_type_hash,
         pool_x_type_hash,
         pool_y_type_hash,
-        &req_x_lock_args,  
+        &req_x_lock_args,
         &req_y_lock_args,
     )?;
 

@@ -94,8 +94,8 @@ impl SwapRequestCell {
 
 #[derive(Default)]
 pub struct LiquidityRequestLockArgsBuilder {
-    user_lock_hash: [u8; 32],
     info_type_hash: [u8; 32],
+    user_lock_hash: [u8; 32],
     version:        u8,
     sudt_x_min:     u128,
     sudt_y_min:     u128,
@@ -147,11 +147,12 @@ impl LiquidityRequestLockArgsBuilder {
 
     pub fn build(self) -> LiquidityRequestLockArgs {
         LiquidityRequestLockArgs::new_builder()
+            .info_type_hash(self.info_type_hash.pack())
             .user_lock_hash(self.user_lock_hash.pack())
             .version(self.version.pack())
             .sudt_x_min(self.sudt_x_min.pack())
             .sudt_y_min(self.sudt_y_min.pack())
-            .info_type_hash(self.info_type_hash.pack())
+            .tips_ckb(self.tips_ckb.pack())
             .tips_sudt_x(self.tips_sudt_x.pack())
             .tips_sudt_y(self.tips_sudt_y.pack())
             .build()
@@ -203,8 +204,8 @@ pub struct SwapRequestLockArgsBuilder {
     user_lock_hash: [u8; 32],
     version:        u8,
     min_amount_out: u128,
-    tips_sudt_x:    u128,
-    tips_sudt_y:    u128,
+    tips_ckb:       u64,
+    tips_sudt:      u128,
 }
 
 impl SwapRequestLockArgsBuilder {
@@ -228,13 +229,13 @@ impl SwapRequestLockArgsBuilder {
         self
     }
 
-    pub fn tips_sudt_x(mut self, tips_sudt_x: u128) -> Self {
-        self.tips_sudt_x = tips_sudt_x;
+    pub fn tips_ckb(mut self, tips_ckb: u64) -> Self {
+        self.tips_ckb = tips_ckb;
         self
     }
 
-    pub fn tips_sudy(mut self, tips_sudt_y: u128) -> Self {
-        self.tips_sudt_y = tips_sudt_y;
+    pub fn tips_sudt(mut self, tips_sudt: u128) -> Self {
+        self.tips_sudt = tips_sudt;
         self
     }
 
@@ -244,8 +245,8 @@ impl SwapRequestLockArgsBuilder {
             .version(self.version.pack())
             .min_amount_out(self.min_amount_out.pack())
             .sudt_type_hash(self.sudt_type_hash.pack())
-            .tips_sudt_x(self.tips_sudt_x.pack())
-            .tips_sudt_y(self.tips_sudt_y.pack())
+            .tips_ckb(self.tips_ckb.pack())
+            .tips_sudt(self.tips_sudt.pack())
             .build()
     }
 }

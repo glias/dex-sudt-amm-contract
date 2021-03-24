@@ -18,7 +18,7 @@ use core::result::Result;
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::*,
-    default_alloc,
+    debug, default_alloc,
     high_level::{load_cell_lock_hash, load_script, load_witness_args, QueryIter},
 };
 use share::{ckb_std, get_cell_type_hash};

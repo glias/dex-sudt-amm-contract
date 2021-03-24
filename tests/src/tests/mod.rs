@@ -11,8 +11,8 @@ use ckb_tool::ckb_types::prelude::*;
 use ckb_x64_simulator::RunningSetup;
 use molecule::prelude::*;
 
+use crate::{blake2b, test_contract, utils, Loader};
 use crate::{cell_builder::*, tx_builder::*};
-use crate::{test_contract, Loader, blake2b, utils};
 
 const MAX_CYCLES: u64 = 10000_0000;
 const POOL_CAPACITY: u64 = 18_600_000_000;
@@ -20,14 +20,6 @@ const SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
 
 lazy_static::lazy_static! {
-    static ref SUDT_TYPE_HASH: [u8; 32] = {
-        let mut ctx = Context::default();
-        let always_success_out_point = ctx.deploy_cell(ALWAYS_SUCCESS.clone());
-        ctx.build_script(&always_success_out_point, Default::default())
-            .unwrap()
-            .calc_script_hash()
-            .unpack()
-    };
     static ref LIQUIDITY_SUDT_TYPE_HASH: [u8; 32] = {
         let mut ctx = Context::default();
         let args = Bytes::from(9999u64.to_le_bytes().to_vec());
@@ -58,6 +50,28 @@ macro_rules! test_contract {
             write_native_setup(stringify!($case_name), $sim_name, &tx, &context, &setup);
         }
     };
+}
+
+fn pool_cell_type_hash(idx: usize) -> [u8; 32] {
+    let mut ctx = Context::default();
+    let always_success_out_point = ctx.deploy_cell(ALWAYS_SUCCESS.clone());
+    ctx.build_script(&always_success_out_point, pool_cell_type_args(idx))
+        .unwrap()
+        .calc_script_hash()
+        .unpack()
+}
+
+fn pool_cell_type_args(idx: usize) -> Bytes {
+    Bytes::from(idx.to_le_bytes().to_vec())
+}
+
+fn liquidity_cell_lock_hash(args: Bytes) -> [u8; 32] {
+    let mut ctx = Context::default();
+    let outpoint = ctx.deploy_cell(Loader::default().load_binary("sudt-liquidity-lock-script"));
+    ctx.build_script(&outpoint, args)
+        .unwrap()
+        .calc_script_hash()
+        .unpack()
 }
 
 fn info_cell_type_hash(idx: usize) -> [u8; 32] {
@@ -99,10 +113,14 @@ fn user_lock_args(idx: usize) -> Bytes {
     Bytes::from(idx.to_le_bytes().to_vec())
 }
 
-fn witness_args_input_type(num: u64) -> Bytes {
-    let byte_opt = Some(Bytes::from(num.to_le_bytes().to_vec())).pack();
+fn witness_args_input_type(swap_count: u64, add_liquidity_count: u64) -> Bytes {
+    let mut bytes = swap_count.to_le_bytes().to_vec();
+    let mut tmp = add_liquidity_count.to_be_bytes().to_vec();
+    bytes.append(&mut tmp);
+
+    let bytes_opt = Some(Bytes::from(bytes)).pack();
     WitnessArgsBuilder::default()
-        .input_type(byte_opt)
+        .input_type(bytes_opt)
         .build()
         .as_bytes()
 }

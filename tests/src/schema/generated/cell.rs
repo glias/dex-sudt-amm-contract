@@ -803,8 +803,8 @@ impl ::core::fmt::Display for SwapRequestLockArgs {
         write!(f, ", {}: {}", "user_lock_hash", self.user_lock_hash())?;
         write!(f, ", {}: {}", "version", self.version())?;
         write!(f, ", {}: {}", "min_amount_out", self.min_amount_out())?;
-        write!(f, ", {}: {}", "tips_sudt_x", self.tips_sudt_x())?;
-        write!(f, ", {}: {}", "tips_sudt_y", self.tips_sudt_y())?;
+        write!(f, ", {}: {}", "tips_ckb", self.tips_ckb())?;
+        write!(f, ", {}: {}", "tips_sudt", self.tips_sudt())?;
         write!(f, " }}")
     }
 }
@@ -814,15 +814,15 @@ impl ::core::default::Default for SwapRequestLockArgs {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         SwapRequestLockArgs::new_unchecked(v.into())
     }
 }
 impl SwapRequestLockArgs {
     pub const FIELD_COUNT: usize = 6;
-    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 16, 16];
-    pub const TOTAL_SIZE: usize = 113;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 8, 16];
+    pub const TOTAL_SIZE: usize = 105;
 
     pub fn sudt_type_hash(&self) -> Byte32 {
         Byte32::new_unchecked(self.0.slice(0..32))
@@ -840,12 +840,12 @@ impl SwapRequestLockArgs {
         Uint128::new_unchecked(self.0.slice(65..81))
     }
 
-    pub fn tips_sudt_x(&self) -> Uint128 {
-        Uint128::new_unchecked(self.0.slice(81..97))
+    pub fn tips_ckb(&self) -> Uint64 {
+        Uint64::new_unchecked(self.0.slice(81..89))
     }
 
-    pub fn tips_sudt_y(&self) -> Uint128 {
-        Uint128::new_unchecked(self.0.slice(97..113))
+    pub fn tips_sudt(&self) -> Uint128 {
+        Uint128::new_unchecked(self.0.slice(89..105))
     }
 
     pub fn as_reader<'r>(&'r self) -> SwapRequestLockArgsReader<'r> {
@@ -887,8 +887,8 @@ impl molecule::prelude::Entity for SwapRequestLockArgs {
             .user_lock_hash(self.user_lock_hash())
             .version(self.version())
             .min_amount_out(self.min_amount_out())
-            .tips_sudt_x(self.tips_sudt_x())
-            .tips_sudt_y(self.tips_sudt_y())
+            .tips_ckb(self.tips_ckb())
+            .tips_sudt(self.tips_sudt())
     }
 }
 #[derive(Clone, Copy)]
@@ -914,15 +914,15 @@ impl<'r> ::core::fmt::Display for SwapRequestLockArgsReader<'r> {
         write!(f, ", {}: {}", "user_lock_hash", self.user_lock_hash())?;
         write!(f, ", {}: {}", "version", self.version())?;
         write!(f, ", {}: {}", "min_amount_out", self.min_amount_out())?;
-        write!(f, ", {}: {}", "tips_sudt_x", self.tips_sudt_x())?;
-        write!(f, ", {}: {}", "tips_sudt_y", self.tips_sudt_y())?;
+        write!(f, ", {}: {}", "tips_ckb", self.tips_ckb())?;
+        write!(f, ", {}: {}", "tips_sudt", self.tips_sudt())?;
         write!(f, " }}")
     }
 }
 impl<'r> SwapRequestLockArgsReader<'r> {
     pub const FIELD_COUNT: usize = 6;
-    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 16, 16];
-    pub const TOTAL_SIZE: usize = 113;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 8, 16];
+    pub const TOTAL_SIZE: usize = 105;
 
     pub fn sudt_type_hash(&self) -> Byte32Reader<'r> {
         Byte32Reader::new_unchecked(&self.as_slice()[0..32])
@@ -940,12 +940,12 @@ impl<'r> SwapRequestLockArgsReader<'r> {
         Uint128Reader::new_unchecked(&self.as_slice()[65..81])
     }
 
-    pub fn tips_sudt_x(&self) -> Uint128Reader<'r> {
-        Uint128Reader::new_unchecked(&self.as_slice()[81..97])
+    pub fn tips_ckb(&self) -> Uint64Reader<'r> {
+        Uint64Reader::new_unchecked(&self.as_slice()[81..89])
     }
 
-    pub fn tips_sudt_y(&self) -> Uint128Reader<'r> {
-        Uint128Reader::new_unchecked(&self.as_slice()[97..113])
+    pub fn tips_sudt(&self) -> Uint128Reader<'r> {
+        Uint128Reader::new_unchecked(&self.as_slice()[89..105])
     }
 }
 impl<'r> molecule::prelude::Reader<'r> for SwapRequestLockArgsReader<'r> {
@@ -980,13 +980,13 @@ pub struct SwapRequestLockArgsBuilder {
     pub(crate) user_lock_hash: Byte32,
     pub(crate) version:        Uint8,
     pub(crate) min_amount_out: Uint128,
-    pub(crate) tips_sudt_x:    Uint128,
-    pub(crate) tips_sudt_y:    Uint128,
+    pub(crate) tips_ckb:       Uint64,
+    pub(crate) tips_sudt:      Uint128,
 }
 impl SwapRequestLockArgsBuilder {
     pub const FIELD_COUNT: usize = 6;
-    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 16, 16];
-    pub const TOTAL_SIZE: usize = 113;
+    pub const FIELD_SIZES: [usize; 6] = [32, 32, 1, 16, 8, 16];
+    pub const TOTAL_SIZE: usize = 105;
 
     pub fn sudt_type_hash(mut self, v: Byte32) -> Self {
         self.sudt_type_hash = v;
@@ -1008,13 +1008,13 @@ impl SwapRequestLockArgsBuilder {
         self
     }
 
-    pub fn tips_sudt_x(mut self, v: Uint128) -> Self {
-        self.tips_sudt_x = v;
+    pub fn tips_ckb(mut self, v: Uint64) -> Self {
+        self.tips_ckb = v;
         self
     }
 
-    pub fn tips_sudt_y(mut self, v: Uint128) -> Self {
-        self.tips_sudt_y = v;
+    pub fn tips_sudt(mut self, v: Uint128) -> Self {
+        self.tips_sudt = v;
         self
     }
 }
@@ -1032,8 +1032,8 @@ impl molecule::prelude::Builder for SwapRequestLockArgsBuilder {
         writer.write_all(self.user_lock_hash.as_slice())?;
         writer.write_all(self.version.as_slice())?;
         writer.write_all(self.min_amount_out.as_slice())?;
-        writer.write_all(self.tips_sudt_x.as_slice())?;
-        writer.write_all(self.tips_sudt_y.as_slice())?;
+        writer.write_all(self.tips_ckb.as_slice())?;
+        writer.write_all(self.tips_sudt.as_slice())?;
         Ok(())
     }
 

@@ -3275,6 +3275,7 @@ dependencies = [
  "ckb-x64-simulator",
  "lazy_static",
  "molecule",
+ "rand 0.7.3",
  "serde_json",
 ]
 

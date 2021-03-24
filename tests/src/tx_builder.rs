@@ -224,14 +224,6 @@ fn build_tx(
             None => sudt_type_script.clone(),
         };
 
-        let sudt_type_script = match input.custom_type_args.clone() {
-            Some(type_args) => {
-                let type_script = sudt_type_script.clone();
-                type_script.as_builder().args(type_args.pack()).build()
-            }
-            None => sudt_type_script.clone(),
-        };
-
         match input.cell {
             InputCell::Info(cell) => {
                 let lock_args = input.custom_lock_args.expect("info input lock args");
