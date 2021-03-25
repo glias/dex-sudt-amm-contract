@@ -147,3 +147,7 @@ fn rand_seed(except: usize) -> usize {
 
     ret
 }
+
+fn rand_bytes(len: usize) -> Bytes {
+    Bytes::from((0..len).map(|_| random::<u8>()).collect::<Vec<_>>())
+}
