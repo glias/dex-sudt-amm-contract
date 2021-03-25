@@ -97,6 +97,16 @@ fn info_cell_type_hash(idx: usize) -> [u8; 32] {
         .unpack()
 }
 
+fn info_cell_type_hash_unchecked(args: Bytes) -> [u8; 32] {
+    Script::new_builder()
+        .code_hash(CellOutput::calc_data_hash(&INFO_TYPE_SCRIPT))
+        .hash_type(Byte::new(0))
+        .args(args.pack())
+        .build()
+        .calc_script_hash()
+        .unpack()
+}
+
 fn user_lock_hash(idx: usize) -> [u8; 32] {
     let mut ctx = Context::default();
     let always_success_out_point = ctx.deploy_cell(ALWAYS_SUCCESS.clone());

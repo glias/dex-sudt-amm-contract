@@ -236,9 +236,15 @@ fn build_tx(
                     .build_script(&info_lock_out_point, lock_args)
                     .expect("info lock script");
 
-                let info_type_script = context
-                    .build_script(&info_type_out_point, hash.clone())
-                    .expect("info type script");
+                let info_type_script = if let Some(args) = input.custom_type_args {
+                    context
+                        .build_script(&info_type_out_point, args)
+                        .expect("info type script")
+                } else {
+                    context
+                        .build_script(&info_type_out_point, hash.clone())
+                        .expect("info type script")
+                };
 
                 let input_out_point = context.create_cell(
                     CellOutput::new_builder()
