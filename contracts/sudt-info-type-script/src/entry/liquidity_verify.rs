@@ -35,8 +35,8 @@ pub fn liquidity_tx_verification(
 
     let add_input_base = 4 + swap_cell_count;
     let add_output_base = 4 + swap_cell_count * 2;
-    let remove_input_base = 4 + swap_cell_count + add_liquidity_count * 2;
-    let remove_output_base = 4 + swap_cell_count * 2 * add_liquidity_count * 3;
+    let remove_input_base = add_input_base + add_liquidity_count * 2;
+    let remove_output_base = add_output_base + add_liquidity_count * 3;
     let remove_count = input_cell_count - remove_input_base;
 
     for rlt_idx in (0..add_liquidity_count * 2).step_by(2) {

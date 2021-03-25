@@ -68,6 +68,10 @@ impl Inputs {
         Self::inner_new(InputCell::Liquidity(cell))
     }
 
+    pub fn new_mint_liquidity(cell: MintLiquidityRequestCell) -> Self {
+        Self::inner_new(InputCell::MintLiquidity(cell))
+    }
+
     pub fn new_swap(cell: SwapRequestCell) -> Self {
         Self::inner_new(InputCell::Swap(cell))
     }
@@ -333,6 +337,31 @@ fn build_tx(
                 inputs.push(input_cell);
                 witnesses.push(input.witness.unwrap_or_default());
             }
+            InputCell::MintLiquidity(cell) => {
+                let lock_args = input
+                    .custom_lock_args
+                    .expect("mint liquidity input lock args");
+                let liquidity_lock = context
+                    .build_script(&liquidity_lock_out_point, lock_args)
+                    .expect("mint liquidity lock script");
+
+                let input_out_point = context.create_cell(
+                    CellOutput::new_builder()
+                        .capacity(cell.capacity.pack())
+                        .lock(liquidity_lock)
+                        .type_(Some(sudt_type_script).pack())
+                        .build(),
+                    cell.data,
+                );
+
+                let input_cell = CellInput::new_builder()
+                    .previous_output(input_out_point)
+                    .build();
+
+                cell_deps.extend(input.cell_deps.unwrap_or_default());
+                inputs.push(input_cell);
+                witnesses.push(input.witness.unwrap_or_default());
+            }
             InputCell::Swap(cell) => {
                 let lock_args = input.custom_lock_args.expect("swap input lock args");
                 let swap_lock = context
@@ -356,7 +385,6 @@ fn build_tx(
                 inputs.push(input_cell);
                 witnesses.push(input.witness.unwrap_or_default());
             }
-            _ => panic!(""),
         }
     }
 
