@@ -149,6 +149,23 @@ fn witness_args_input_type(swap_count: u64, add_liquidity_count: u64) -> Bytes {
         .as_bytes()
 }
 
+fn witness_args_input_type_unchecked(
+    swap_count: u64,
+    add_liquidity_count: u64,
+    len: usize,
+) -> Bytes {
+    let mut bytes = swap_count.to_le_bytes().to_vec();
+    let mut tmp = add_liquidity_count.to_le_bytes().to_vec();
+    bytes.append(&mut tmp);
+    bytes.truncate(len);
+
+    let bytes_opt = Some(Bytes::from(bytes)).pack();
+    WitnessArgsBuilder::default()
+        .input_type(bytes_opt)
+        .build()
+        .as_bytes()
+}
+
 fn rand_seed(except: usize) -> usize {
     let mut ret = random::<usize>();
     while ret == except {
