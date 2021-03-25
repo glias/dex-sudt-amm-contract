@@ -5,6 +5,7 @@ use share::cell::SwapRequestLockArgs;
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::*,
+    debug,
     high_level::{load_cell, load_cell_data},
 };
 use share::{decode_u128, get_cell_type_hash};
@@ -82,9 +83,11 @@ pub fn swap_tx_verification(
 
         if sudt_out_type_hash == pool_y_type_hash {
             // SUDT_X => SUDT_Y
+            debug!("x -> y");
             x_exchange_y(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         } else {
             // SUDT_Y => SUDT_X
+            debug!("y -> x");
             y_exchange_x(amount_in, amount_out, sudt_x_reserve, sudt_y_reserve)?;
         }
     }

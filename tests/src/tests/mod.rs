@@ -15,7 +15,10 @@ use rand::random;
 use crate::{blake2b, test_contract, utils, Loader};
 use crate::{cell_builder::*, tx_builder::*};
 
-const MAX_CYCLES: u64 = 10000_0000;
+const INFO_INDEX: usize = 0;
+const POOL_X_INDEX: usize = 1;
+const POOL_Y_INDEX: usize = 2;
+const MAX_CYCLES: u64 = 100_000_000;
 const POOL_CAPACITY: u64 = 18_600_000_000;
 const SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
@@ -132,4 +135,13 @@ fn witness_args_input_type(swap_count: u64, add_liquidity_count: u64) -> Bytes {
         .input_type(bytes_opt)
         .build()
         .as_bytes()
+}
+
+fn rand_seed(except: usize) -> usize {
+    let mut ret = random::<usize>();
+    while ret == except {
+        ret = random::<usize>();
+    }
+
+    ret
 }
