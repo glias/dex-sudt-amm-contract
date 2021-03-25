@@ -18,6 +18,11 @@ impl InfoCell {
             data,
         }
     }
+
+    pub fn custom_capacity(mut self, capacity: u64) -> Self {
+        self.capacity = Capacity::shannons(capacity);
+        self
+    }
 }
 
 #[derive(Default)]
