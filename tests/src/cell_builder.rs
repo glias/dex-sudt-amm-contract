@@ -341,4 +341,11 @@ impl FreeCell {
             data:     Bytes::new(),
         }
     }
+
+    pub fn new_unchecked(capacity: u64, data: Bytes) -> Self {
+        FreeCell {
+            capacity: Capacity::shannons(capacity),
+            data,
+        }
+    }
 }

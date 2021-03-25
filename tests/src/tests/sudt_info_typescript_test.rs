@@ -2,6 +2,9 @@ use super::*;
 
 const ERR_RANDE_END_INDEX_OUT_OF_BOUND: i8 = -1;
 const ERR_DECODING_DATA_STRUCTURE_ERROR: i8 = 4;
+const ERR_INVALID_OUTPUT_INFO_TOTAL_LIQUIDITY: i8 = 8;
+const ERR_INVALID_OUTPUT_INFO_SUDT_X_RESERVE: i8 = 9;
+const ERR_INVALID_OUTPUT_INFO_SUDT_Y_RESERVE: i8 = 10;
 const ERR_INFO_LOCK_ARGS_FIRST_HALF_MISMATCH: i8 = 11;
 const ERR_INFO_LOCK_ARGS_SECOND_HALF_MISMATCH: i8 = 12;
 const ERR_INVALID_INFO_CAPACITY: i8 = 13;
@@ -17,6 +20,17 @@ const ERR_INVALID_POOL_Y_AMOUNT: i8 = 24;
 const ERR_INVALID_OUTPUT_POOL_CAPACITY: i8 = 27;
 const ERR_INVALID_REQUEST_X_TYPE_HASH: i8 = 31;
 const ERR_INVALID_REQUEST_Y_TYPE_HASH: i8 = 32;
+const ERR_REQUEST_X_AND_Y_USER_LOCK_HASH_DIFF: i8 = 34;
+const ERR_INVALID_REQUEST_Y_LOCK_ARGS_SUDT_X_LOCK_HASH: i8 = 35;
+const ERR_INVALID_OUTPUT_LP_TYPE_HASH: i8 = 39;
+const ERR_INVALID_OUTPUT_LP_AMOUNT: i8 = 40;
+const ERR_CKB_CHANGE_DATA_IS_NOT_EMPTY: i8 = 41;
+const ERR_CKB_CHANGE_TYPE_SCRIPT_IS_SOME: i8 = 42;
+const ERR_INVALID_CKB_CHANGE_LOCK_HASH: i8 = 43;
+const ERR_INVALID_CKB_CHANGE_CAPACITY: i8 = 44;
+const ERR_INVALID_SUDT_CAPACITY: i8 = 58;
+const ERR_INVALID_SUDT_DATA_LEN: i8 = 59;
+const ERR_INVALID_SUDT_LOCK_HASH: i8 = 61;
 
 // #####################
 // Create Info Tests
@@ -2752,6 +2766,1095 @@ test_contract!(
         assert_error_eq!(
             err,
             tx_error(ERR_INVALID_REQUEST_Y_TYPE_HASH, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_request_x_and_y_lock_hash_diff,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(crate::tests::user_lock_hash(5))
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_REQUEST_X_AND_Y_USER_LOCK_HASH_DIFF, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_request_y_lock_args_x_lock_hash,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(rand_bytes(137)))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(
+                ERR_INVALID_REQUEST_Y_LOCK_ARGS_SUDT_X_LOCK_HASH,
+                0,
+                true,
+                false
+            )
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_lp_out_capacity,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY - 10, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(err, tx_error(ERR_INVALID_SUDT_CAPACITY, 0, true, false));
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_lp_out_lock_hash,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(5));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(err, tx_error(ERR_INVALID_SUDT_LOCK_HASH, 0, true, false));
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_lp_out_type_hash,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(rand_bytes(32))
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_OUTPUT_LP_TYPE_HASH, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_ckb_change_capacity,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100 - 10))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_CKB_CHANGE_CAPACITY, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_ckb_change_data,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 =
+            Outputs::new_ckb(FreeCell::new_unchecked(SUDT_CAPACITY - 100, rand_bytes(16)))
+                .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_CKB_CHANGE_DATA_IS_NOT_EMPTY, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_ckb_change_lock_hash,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(5));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_CKB_CHANGE_LOCK_HASH, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_output_lp_amount,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 150))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(err, tx_error(ERR_INVALID_OUTPUT_LP_AMOUNT, 0, true, false));
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_info_out_sudt_x_reserve,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(150)
+                .sudt_y_reserve(100)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 150))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_OUTPUT_INFO_SUDT_X_RESERVE, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_info_out_sudt_y_reserve,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(150)
+                .total_liquidity(100)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 150))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_OUTPUT_INFO_SUDT_Y_RESERVE, 0, true, false)
+        );
+
+        (context, tx)
+    },
+    false,
+    "sudt-info-typescript-sim"
+);
+
+test_contract!(
+    initial_mint_invalid_info_out_total_liquidity,
+    {
+        let pool_x_type_hash = pool_cell_type_hash(POOL_X_INDEX);
+        let pool_y_type_hash = pool_cell_type_hash(POOL_Y_INDEX);
+        let mut hash = blake2b!(pool_x_type_hash, pool_y_type_hash).to_vec();
+        let mut hash_1 = info_cell_type_hash(0).to_vec();
+        hash.append(&mut hash_1);
+        assert_eq!(hash.len(), 64);
+
+        let input_0 = Inputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .liquidity_sudt_type_hash(*LIQUIDITY_SUDT_TYPE_HASH)
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()))
+        .custom_witness(witness_args_input_type(0, 0));
+
+        let input_1 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let input_2 = Inputs::new_pool(SudtCell::new(POOL_CAPACITY, 0))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+
+        let input_3 = Inputs::new_matcher(FreeCell::new(100));
+
+        let user_lock_hash = user_lock_hash(4);
+        let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(0))
+            .user_lock_hash(user_lock_hash)
+            .tips_ckb(100)
+            .build();
+
+        let input_4 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_x_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX));
+
+        let req_y_lock_args = MintLiquidityRequestLockArgsBuilder::default()
+            .info_type_hash(info_cell_type_hash(INFO_INDEX))
+            .req_sudt_x_cell_lock_hash(liquidity_cell_lock_hash(req_x_lock_args.as_bytes()))
+            .user_lock_hash(user_lock_hash)
+            .build();
+        let input_5 = Inputs::new_liquidity(LiquidityRequestCell::new(SUDT_CAPACITY, 100))
+            .custom_lock_args(req_y_lock_args.as_bytes())
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX));
+
+        let output_0 = Outputs::new_info(
+            InfoCellBuilder::default()
+                .capacity(INFO_CAPACITY)
+                .sudt_x_reserve(100)
+                .sudt_y_reserve(100)
+                .total_liquidity(150)
+                .liquidity_sudt_type_hash(pool_cell_type_hash(POOL_X_INDEX))
+                .build(),
+        )
+        .custom_lock_args(Bytes::from(hash.clone()));
+        let output_1 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_X_INDEX))
+            .custom_lock_args(Bytes::from(hash.clone()));
+        let output_2 = Outputs::new_pool(SudtCell::new(POOL_CAPACITY, 100))
+            .custom_type_args(pool_cell_type_args(POOL_Y_INDEX))
+            .custom_lock_args(Bytes::from(hash));
+
+        let output_3 = Outputs::new_matcher(FreeCell::new(150));
+        let output_4 = Outputs::new_sudt(SudtCell::new(SUDT_CAPACITY, 100))
+            .custom_type_args(liquidity_sudt_type_args())
+            .custom_lock_args(user_lock_args(4));
+        let output_5 = Outputs::new_ckb(FreeCell::new(SUDT_CAPACITY - 100))
+            .custom_lock_args(user_lock_args(4));
+
+        let (mut context, tx) = build_test_context(
+            vec![input_0, input_1, input_2, input_3, input_4, input_5],
+            vec![output_0, output_1, output_2, output_3, output_4, output_5],
+        );
+        let tx = context.complete_tx(tx);
+
+        let err = context.verify_tx(&tx, MAX_CYCLES).unwrap_err();
+
+        assert_error_eq!(
+            err,
+            tx_error(ERR_INVALID_OUTPUT_INFO_TOTAL_LIQUIDITY, 0, true, false)
         );
 
         (context, tx)
