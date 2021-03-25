@@ -10,6 +10,7 @@ use ckb_tool::ckb_types::packed::*;
 use ckb_tool::ckb_types::prelude::*;
 use ckb_x64_simulator::RunningSetup;
 use molecule::prelude::*;
+use rand::random;
 
 use crate::{blake2b, test_contract, utils, Loader};
 use crate::{cell_builder::*, tx_builder::*};
@@ -52,17 +53,25 @@ macro_rules! test_contract {
     };
 }
 
-fn pool_cell_type_hash(idx: usize) -> [u8; 32] {
+fn sudt_type_hash(seed: usize) -> [u8; 32] {
     let mut ctx = Context::default();
     let always_success_out_point = ctx.deploy_cell(ALWAYS_SUCCESS.clone());
-    ctx.build_script(&always_success_out_point, pool_cell_type_args(idx))
+    ctx.build_script(&always_success_out_point, sudt_cell_type_args(seed))
         .unwrap()
         .calc_script_hash()
         .unpack()
 }
 
+fn sudt_cell_type_args(seed: usize) -> Bytes {
+    Bytes::from(seed.to_le_bytes().to_vec())
+}
+
 fn pool_cell_type_args(idx: usize) -> Bytes {
-    Bytes::from(idx.to_le_bytes().to_vec())
+    sudt_cell_type_args(idx)
+}
+
+fn pool_cell_type_hash(idx: usize) -> [u8; 32] {
+    sudt_type_hash(idx)
 }
 
 fn liquidity_cell_lock_hash(args: Bytes) -> [u8; 32] {
