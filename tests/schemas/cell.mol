@@ -30,6 +30,6 @@ struct SwapRequestLockArgs {
     user_lock_hash: Byte32,
     version: Uint8,
     min_amount_out: Uint128,
-    tips_sudt_x: Uint128,
-    tips_sudt_y: Uint128,
+    tips_ckb: Uint64,
+    tips_sudt: Uint128,
 }

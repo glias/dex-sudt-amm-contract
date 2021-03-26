@@ -341,7 +341,7 @@ dependencies = [
  "faster-hex 0.4.1",
  "lazy_static",
  "rand 0.6.5",
- "secp256k1 0.17.2",
+ "secp256k1",
 ]
 
 [[package]]
@@ -2304,7 +2304,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c00cf8b9eafe68dde5e9eaa2cef8ee84a9336a47d566ec55ca16589633b65af7"
 dependencies = [
- "siphasher 0.3.3",
+ "siphasher 0.3.5",
 ]
 
 [[package]]
@@ -2863,16 +2863,7 @@ version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2932dc07acd2066ff2e3921a4419606b220ba6cd03a9935123856cc534877056"
 dependencies = [
- "secp256k1-sys 0.1.2",
-]
-
-[[package]]
-name = "secp256k1"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6179428c22c73ac0fbb7b5579a56353ce78ba29759b3b8575183336ea74cdfb"
-dependencies = [
- "secp256k1-sys 0.3.0",
+ "secp256k1-sys",
 ]
 
 [[package]]
@@ -2880,15 +2871,6 @@ name = "secp256k1-sys"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab2c26f0d3552a0f12e639ae8a64afc2e3db9c52fe32f5fc6c289d38519f220"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "secp256k1-sys"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11553d210db090930f4432bea123b31f70bbf693ace14504ea2a35e796c28dd2"
 dependencies = [
  "cc",
 ]
@@ -3089,9 +3071,9 @@ checksum = "0b8de496cf83d4ed58b6be86c3a275b8602f6ffe98d3024a869e124147a9a3ac"
 
 [[package]]
 name = "siphasher"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa8f3741c7372e75519bd9346068370c9cdaabcc1f9599cbcf2a2719352286b7"
+checksum = "cbce6d4507c7e4a3962091436e56e95290cb71fa302d0d270e32130b75fbff27"
 
 [[package]]
 name = "sized-chunks"
@@ -3266,7 +3248,7 @@ dependencies = [
  "openssl-sys",
  "rand 0.7.3",
  "ring",
- "secp256k1 0.17.2",
+ "secp256k1",
  "tokio 0.2.25",
  "tokio-util",
  "unsigned-varint",
@@ -3288,18 +3270,13 @@ dependencies = [
  "blake2b-rs 0.2.0",
  "ckb-dyn-lock",
  "ckb-standalone-debugger",
- "ckb-system-scripts",
  "ckb-testtool",
  "ckb-tool",
  "ckb-x64-simulator",
- "hex",
  "lazy_static",
  "molecule",
- "rand 0.8.3",
- "secp256k1 0.19.0",
+ "rand 0.7.3",
  "serde_json",
- "sha3",
- "share",
 ]
 
 [[package]]

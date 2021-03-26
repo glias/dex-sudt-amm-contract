@@ -75,6 +75,8 @@ pub enum Error {
     InvalidRemoveLpLockArgsInfoTypeHash,
     InvalidXAmountOut,
     InvalidYAmountOut = 70,
+    InvalidXAmountIn,
+    InvalidYAmountIn,
 }
 
 impl From<SysError> for Error {

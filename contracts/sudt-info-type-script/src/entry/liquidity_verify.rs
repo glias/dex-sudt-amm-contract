@@ -8,6 +8,7 @@ use share::cell::{InfoCellData, LiquidityRequestLockArgs, MintLiquidityRequestLo
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::{packed::CellOutput, prelude::*},
+    debug,
     high_level::{load_cell, load_cell_data, load_cell_lock_hash},
 };
 use share::{decode_u128, get_cell_type_hash};
@@ -34,8 +35,8 @@ pub fn liquidity_tx_verification(
 
     let add_input_base = 4 + swap_cell_count;
     let add_output_base = 4 + swap_cell_count * 2;
-    let remove_input_base = 4 + swap_cell_count + add_liquidity_count * 2;
-    let remove_output_base = 4 + swap_cell_count * 2 * add_liquidity_count * 3;
+    let remove_input_base = add_input_base + add_liquidity_count * 2;
+    let remove_output_base = add_output_base + add_liquidity_count * 3;
     let remove_count = input_cell_count - remove_input_base;
 
     for rlt_idx in (0..add_liquidity_count * 2).step_by(2) {
@@ -199,7 +200,7 @@ fn burn_liquidity(
     let tips_sudt_lp = req_lp_lock_args.tips_sudt_x;
 
     if req_lp_lock_args.info_type_hash != info_type_hash {
-        return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash)
+        return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash);
     }
 
     let sudt_x_out_data = load_cell_data(sudt_x_index, Source::Output)?;
@@ -287,7 +288,7 @@ fn mint_liquidity(
         info_type_hash,
         pool_x_type_hash,
         pool_y_type_hash,
-        &req_x_lock_args,  
+        &req_x_lock_args,
         &req_y_lock_args,
     )?;
 
@@ -345,6 +346,7 @@ fn mint_liquidity(
     if get_cell_type_hash!(req_y_index, Source::Input)
         == get_cell_type_hash!(sudt_change_index, Source::Output)
     {
+        debug!("x_exhausted");
         x_exhausted(
             amount_x,
             amount_y,
@@ -356,6 +358,7 @@ fn mint_liquidity(
             total_liquidity,
         )?;
     } else {
+        debug!("y_exhausted");
         y_exhausted(
             amount_x,
             amount_y,
@@ -391,7 +394,7 @@ fn x_exhausted(
     if BigUint::from(amount_y_in)
         != BigUint::from(amount_x) * (*sudt_y_reserve) / (*sudt_x_reserve) + ONE
     {
-        return Err(Error::InvalidXAmountMin);
+        return Err(Error::InvalidYAmountMin);
     }
 
     if BigUint::from(amount_lp)
@@ -424,7 +427,7 @@ fn y_exhausted(
     if BigUint::from(amount_x_in)
         != BigUint::from(amount_y) * (*sudt_x_reserve) / (*sudt_y_reserve) + ONE
     {
-        return Err(Error::InvalidXAmountMin);
+        return Err(Error::InvalidXAmountIn);
     }
 
     if BigUint::from(amount_lp)
