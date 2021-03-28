@@ -25,7 +25,7 @@ pub enum Error {
     InvalidPoolOutputData,
     InvalidInfoLockInOutputCount,
     SameSUDTInPair = 20,
-    InvalidLockScriptHashType,
+    InvalidYAmountIn,
     InvalidInfoLockInDepsCount,
     PoolXAmountDiff,
     PoolYAmountDiff,
@@ -76,7 +76,6 @@ pub enum Error {
     InvalidXAmountOut,
     InvalidYAmountOut = 70,
     InvalidXAmountIn,
-    InvalidYAmountIn,
 }
 
 impl From<SysError> for Error {

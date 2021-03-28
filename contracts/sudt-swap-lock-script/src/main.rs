@@ -14,6 +14,9 @@ mod error;
 
 use alloc::vec::Vec;
 use core::result::Result;
+use share::ckb_std::ckb_types::packed::CellOutput;
+use share::ckb_std::high_level::load_cell_data;
+use share::{decode_u128, get_cell_type_hash};
 
 use share::cell::SwapRequestLockArgs;
 use share::ckb_std::{
@@ -28,7 +31,7 @@ use share::ckb_std::{
 
 use crate::error::Error;
 
-const SUDT_CAPACITY: u64 = 14_200_000_000;
+const MIN_SUDT_CAPACITY: u64 = 14_200_000_000;
 
 // Alloc 4K fast HEAP + 2M HEAP to receives PrefilledData
 default_alloc!(4 * 1024, 2048 * 1024, 64);
@@ -59,7 +62,7 @@ fn main() -> Result<(), Error> {
     let self_hash = load_script_hash()?;
     let req_lock_args = SwapRequestLockArgs::from_raw(&script_args)?;
 
-    for abs_idx in QueryIter::new(load_cell_lock_hash, Source::Input)
+    let swap_index_set = QueryIter::new(load_cell_lock_hash, Source::Input)
         .enumerate()
         .filter_map(|(idx, hash)| {
             if hash == self_hash {
@@ -68,17 +71,99 @@ fn main() -> Result<(), Error> {
                 None
             }
         })
-    {
+        .collect::<Vec<_>>();
+
+    for abs_idx in swap_index_set.into_iter() {
         let input_idx = 4 + abs_idx;
         let output_idx = 4 + abs_idx * 2;
 
         let req_cell = load_cell(input_idx, Source::Input)?;
-        let output_sudt_cell = load_cell(output_idx, Source::Output)?;
-        let output_ckb_cell = load_cell(output_idx + 1, Source::Output)?;
+        let sudt_cell = load_cell(output_idx, Source::Output)?;
+        let sudt_type_hash = get_cell_type_hash!(output_idx, Source::Output);
+        let sudt_data = load_cell_data(output_idx, Source::Output)?;
 
-        if load_cell_lock_hash(output_idx, Source::Output)? != req_lock_args.user_lock_hash {
-            return Err(Error::InvalidOutputLockHash);
+        if get_cell_type_hash!(input_idx, Source::Input) == sudt_type_hash {
+            return Err(Error::SwapSelf);
         }
+
+        if req_lock_args.sudt_type_hash != sudt_type_hash {
+            return Err(Error::InvalidSUDTTypeHash);
+        }
+
+        verify_sudt_cell(
+            &sudt_cell,
+            output_idx,
+            &sudt_data,
+            req_lock_args.user_lock_hash,
+        )?;
+
+        let expected_ckb_capcatiy =
+            req_cell.capacity().unpack() - MIN_SUDT_CAPACITY - req_lock_args.tips_ckb;
+
+        verify_ckb_cell(
+            output_idx + 1,
+            expected_ckb_capcatiy,
+            req_lock_args.user_lock_hash,
+        )?;
+
+        // amount > 0
+        if decode_u128(&load_cell_data(input_idx, Source::Input)?)? <= req_lock_args.tips_sudt {
+            return Err(Error::InvalidAmountIn);
+        }
+
+        // amount_out > min_amount_out
+        if req_lock_args.min_amount_out == 0
+            || decode_u128(&sudt_data)? < req_lock_args.min_amount_out
+        {
+            return Err(Error::InvalidMinAmountOut);
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_sudt_cell(
+    sudt_cell: &CellOutput,
+    index: usize,
+    cell_data: &[u8],
+    user_lock_hash: [u8; 32],
+) -> Result<(), Error> {
+    if sudt_cell.capacity().unpack() != MIN_SUDT_CAPACITY {
+        return Err(Error::InvalidSUDTCapacity);
+    }
+
+    if cell_data.len() < 16 {
+        return Err(Error::InvalidSUDTCellData);
+    }
+
+    if load_cell_lock_hash(index, Source::Output)? != user_lock_hash {
+        return Err(Error::InvalidSUDTLockHash);
+    }
+
+    Ok(())
+}
+
+fn verify_ckb_cell(
+    index: usize,
+    expected_capcatiy: u64,
+    user_lock_hash: [u8; 32],
+) -> Result<(), Error> {
+    let ckb_cell = load_cell(index, Source::Output)?;
+
+    if ckb_cell.capacity().unpack() != expected_capcatiy {
+        return Err(Error::InvalidCKBCapacity);
+    }
+
+    if !load_cell_data(index, Source::Output)?.is_empty() {
+        return Err(Error::InvalidCKBCellData);
+    }
+
+    if ckb_cell.type_().is_some() {
+        return Err(Error::CkbTypeScriptIsSome);
+    }
+
+    if load_cell_lock_hash(index, Source::Output)? != user_lock_hash {
+        return Err(Error::InvalidCkbLockHash);
     }
 
     Ok(())
