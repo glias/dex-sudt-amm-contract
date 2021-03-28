@@ -2833,7 +2833,7 @@ test_contract!(
         let user_lock_hash = user_lock_hash(4);
         let req_x_lock_args = LiquidityRequestLockArgsBuilder::default()
             .info_type_hash(info_cell_type_hash(0))
-            .user_lock_hash(crate::tests::user_lock_hash(5))
+            .user_lock_hash(crate::script_test::user_lock_hash(5))
             .tips_ckb(100)
             .build();
 
