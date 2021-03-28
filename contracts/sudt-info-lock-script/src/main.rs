@@ -19,7 +19,7 @@ use share::ckb_std;
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::prelude::*,
-    debug, default_alloc,
+    default_alloc,
     high_level::{load_cell, load_script, QueryIter},
 };
 
@@ -45,8 +45,6 @@ fn main() -> Result<(), Error> {
     let info_type_hash = get_cell_type_hash!(0, Source::GroupInput);
     let pool_x_type_hash = get_cell_type_hash!(1, Source::GroupInput);
     let self_args: Vec<u8> = load_script()?.args().unpack();
-
-    debug!("{:?}", group_count);
 
     match group_count {
         2 => {

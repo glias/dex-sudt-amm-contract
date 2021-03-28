@@ -8,7 +8,6 @@ use share::cell::{InfoCellData, LiquidityRequestLockArgs, MintLiquidityRequestLo
 use share::ckb_std::{
     ckb_constants::Source,
     ckb_types::{packed::CellOutput, prelude::*},
-    debug,
     high_level::{load_cell, load_cell_data, load_cell_lock_hash},
 };
 use share::{decode_u128, get_cell_type_hash};
@@ -346,7 +345,6 @@ fn mint_liquidity(
     if get_cell_type_hash!(req_y_index, Source::Input)
         == get_cell_type_hash!(sudt_change_index, Source::Output)
     {
-        debug!("x_exhausted");
         x_exhausted(
             amount_x,
             amount_y,
@@ -358,7 +356,6 @@ fn mint_liquidity(
             total_liquidity,
         )?;
     } else {
-        debug!("y_exhausted");
         y_exhausted(
             amount_x,
             amount_y,
@@ -394,7 +391,7 @@ fn x_exhausted(
     if BigUint::from(amount_y_in)
         != BigUint::from(amount_x) * (*sudt_y_reserve) / (*sudt_x_reserve) + ONE
     {
-        return Err(Error::InvalidYAmountMin);
+        return Err(Error::InvalidYAmountIn);
     }
 
     if BigUint::from(amount_lp)

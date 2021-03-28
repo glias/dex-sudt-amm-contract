@@ -1,7 +1,7 @@
+use share::ckb_std::ckb_constants::Source;
 use share::ckb_std::ckb_types::packed::CellOutput;
 use share::ckb_std::ckb_types::prelude::Unpack;
 use share::ckb_std::high_level::{load_cell, load_cell_data, load_cell_lock_hash};
-use share::ckb_std::{ckb_constants::Source, debug};
 
 use crate::entry::MIN_SUDT_CAPACITY;
 use crate::error::Error;
@@ -33,8 +33,6 @@ pub fn verify_ckb_cell(
     user_lock_hash: [u8; 32],
 ) -> Result<(), Error> {
     let ckb_cell = load_cell(index, source)?;
-
-    debug!("{:?}", expected_capcatiy);
 
     if (ckb_cell.capacity().unpack() as u128) != expected_capcatiy {
         return Err(Error::InvalidCKBCapacity);
