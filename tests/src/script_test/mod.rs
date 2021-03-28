@@ -1,6 +1,7 @@
 mod sudt_info_lockscript_test;
 mod sudt_info_typescript_test;
 mod sudt_liquidity_lockscript_test;
+mod sudt_swap_lockscript_test;
 
 use std::collections::HashMap;
 
