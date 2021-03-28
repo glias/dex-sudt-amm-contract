@@ -14,7 +14,7 @@ pub mod utils;
 mod schema;
 #[cfg(test)]
 #[allow(dead_code)]
-mod tests;
+mod script_test;
 
 lazy_static::lazy_static! {
     static ref LOADER: Loader = Loader::default();

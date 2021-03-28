@@ -1,3 +1,4 @@
+mod sudt_info_lockscript_test;
 mod sudt_info_typescript_test;
 
 use std::collections::HashMap;
