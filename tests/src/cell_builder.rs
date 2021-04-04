@@ -97,7 +97,6 @@ impl SwapRequestCell {
     }
 }
 
-#[derive(Default)]
 pub struct LiquidityRequestLockArgsBuilder {
     info_type_hash: [u8; 32],
     user_lock_hash: [u8; 32],
@@ -107,6 +106,21 @@ pub struct LiquidityRequestLockArgsBuilder {
     tips_ckb:       u64,
     tips_sudt_x:    u128,
     tips_sudt_y:    u128,
+}
+
+impl Default for LiquidityRequestLockArgsBuilder {
+    fn default() -> Self {
+        LiquidityRequestLockArgsBuilder {
+            info_type_hash: [0u8; 32],
+            user_lock_hash: [0u8; 32],
+            version:        1,
+            sudt_x_min:     0,
+            sudt_y_min:     0,
+            tips_ckb:       0,
+            tips_sudt_x:    0,
+            tips_sudt_y:    0,
+        }
+    }
 }
 
 impl LiquidityRequestLockArgsBuilder {
@@ -164,12 +178,22 @@ impl LiquidityRequestLockArgsBuilder {
     }
 }
 
-#[derive(Default)]
 pub struct MintLiquidityRequestLockArgsBuilder {
     info_type_hash:            [u8; 32],
     user_lock_hash:            [u8; 32],
     version:                   u8,
     req_sudt_x_cell_lock_hash: [u8; 32],
+}
+
+impl Default for MintLiquidityRequestLockArgsBuilder {
+    fn default() -> Self {
+        MintLiquidityRequestLockArgsBuilder {
+            info_type_hash:            [0u8; 32],
+            user_lock_hash:            [0u8; 32],
+            version:                   1,
+            req_sudt_x_cell_lock_hash: [0u8; 32],
+        }
+    }
 }
 
 impl MintLiquidityRequestLockArgsBuilder {
@@ -203,7 +227,6 @@ impl MintLiquidityRequestLockArgsBuilder {
     }
 }
 
-#[derive(Default)]
 pub struct SwapRequestLockArgsBuilder {
     sudt_type_hash: [u8; 32],
     user_lock_hash: [u8; 32],
@@ -211,6 +234,19 @@ pub struct SwapRequestLockArgsBuilder {
     min_amount_out: u128,
     tips_ckb:       u64,
     tips_sudt:      u128,
+}
+
+impl Default for SwapRequestLockArgsBuilder {
+    fn default() -> Self {
+        SwapRequestLockArgsBuilder {
+            sudt_type_hash: [0u8; 32],
+            user_lock_hash: [0u8; 32],
+            version:        1,
+            min_amount_out: 0,
+            tips_ckb:       0,
+            tips_sudt:      0,
+        }
+    }
 }
 
 impl SwapRequestLockArgsBuilder {

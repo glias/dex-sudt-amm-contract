@@ -27,6 +27,7 @@ use crate::error::Error;
 const INFO_INDEX: usize = 0;
 const POOL_X_INDEX: usize = 1;
 const POOL_Y_INDEX: usize = 2;
+const SUDT_DATA_LEN: usize = 16;
 const ONE: u128 = 1;
 const THOUSAND: u128 = 1_000;
 const FEE_RATE: u128 = 997;
@@ -34,7 +35,7 @@ const POOL_CAPACITY: u64 = 18_600_000_000;
 const MIN_SUDT_CAPACITY: u64 = 14_200_000_000;
 const INFO_CAPACITY: u64 = 25_000_000_000;
 const BASE_CELL_COUNT: usize = 4;
-// const INFO_VERSION: u8 = 1;
+const VERSION: u8 = 1;
 
 pub static INFO_LOCK_DATA_HASH: &str =
     include!(concat!(env!("OUT_DIR"), "/info_lock_code_hash.rs"));
@@ -62,7 +63,7 @@ pub fn main() -> Result<(), Error> {
     let pool_y_in_cell = load_cell(POOL_Y_INDEX, Source::Input)?;
     let pool_y_in_data = SUDTAmountData::from_raw(&load_cell_data(POOL_Y_INDEX, Source::Input)?)?;
     let info_out_cell = load_cell(INFO_INDEX, Source::Output)?;
-    let info_out_data = InfoCellData::from_raw(&load_cell_data(0, Source::Output)?)?;
+    let info_out_data = InfoCellData::from_raw(&load_cell_data(INFO_INDEX, Source::Output)?)?;
     let pool_x_out_cell = load_cell(POOL_X_INDEX, Source::Output)?;
     let pool_x_out_data = SUDTAmountData::from_raw(&load_cell_data(POOL_X_INDEX, Source::Output)?)?;
     let pool_y_out_cell = load_cell(POOL_Y_INDEX, Source::Output)?;
@@ -101,7 +102,7 @@ pub fn main() -> Result<(), Error> {
     let mut sudt_y_reserve = info_in_data.sudt_y_reserve;
     let mut total_liquidity = info_in_data.total_liquidity;
 
-    let raw_witness: Vec<u8> = load_witness_args(INFO_INDEX, Source::Input)?
+    let raw_witness: Vec<u8> = load_witness_args(0, Source::Input)?
         .input_type()
         .to_opt()
         .unwrap()
@@ -362,8 +363,8 @@ fn verify_output_pools() -> Result<(), Error> {
         return Err(Error::InvalidPoolOutCapacity);
     }
 
-    if load_cell_data(POOL_X_INDEX, Source::Output)?.len() < 16
-        || load_cell_data(POOL_Y_INDEX, Source::Output)?.len() < 16
+    if load_cell_data(POOL_X_INDEX, Source::Output)?.len() < SUDT_DATA_LEN
+        || load_cell_data(POOL_Y_INDEX, Source::Output)?.len() < SUDT_DATA_LEN
     {
         return Err(Error::InvalidPoolOutputData);
     }
