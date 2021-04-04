@@ -77,6 +77,7 @@ pub enum Error {
     InvalidYAmountOut = 70,
     InvalidXAmountIn,
     NoInfoLockInCellDeps,
+    VersionDiff,
 }
 
 impl From<SysError> for Error {

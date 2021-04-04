@@ -13,7 +13,7 @@ use share::ckb_std::{
 use share::{decode_u128, get_cell_type_hash};
 
 use crate::entry::utils::{verify_ckb_cell, verify_sudt_basic};
-use crate::entry::{MIN_SUDT_CAPACITY, ONE, POOL_X_INDEX, POOL_Y_INDEX};
+use crate::entry::{MIN_SUDT_CAPACITY, ONE, POOL_X_INDEX, POOL_Y_INDEX, SUDT_DATA_LEN, VERSION};
 use crate::error::Error;
 
 pub fn liquidity_tx_verification(
@@ -96,13 +96,20 @@ pub fn verify_initial_mint(
         return Err(Error::InvalidSUDTYTypeHash);
     }
 
-    let req_sudt_x_cell = load_cell(4, Source::Input)?;
+    let sudt_index = 4usize;
+    let ckb_index = 5usize;
+
+    let req_sudt_x_cell = load_cell(sudt_index, Source::Input)?;
     let raw_sudt_x_lock_args: Vec<u8> = req_sudt_x_cell.lock().args().unpack();
     let req_sudt_x_lock_args = LiquidityRequestLockArgs::from_raw(&raw_sudt_x_lock_args)?;
 
-    let req_sudt_y_cell = load_cell(5, Source::Input)?;
+    let req_sudt_y_cell = load_cell(ckb_index, Source::Input)?;
     let raw_sudt_y_lock_args: Vec<u8> = req_sudt_y_cell.lock().args().unpack();
     let req_sudt_y_lock_args = MintLiquidityRequestLockArgs::from_raw(&raw_sudt_y_lock_args)?;
+
+    if req_sudt_x_lock_args.version != VERSION || req_sudt_y_lock_args.version != VERSION {
+        return Err(Error::VersionDiff);
+    }
 
     // info_in.type_hash == req_x.lock.args[0..32]
     if info_in_type_hash != req_sudt_x_lock_args.info_type_hash
@@ -118,16 +125,16 @@ pub fn verify_initial_mint(
     }
 
     // req_x.lock_hash == req_y.lock.args[65..97]
-    let req_sudt_x_lock_hash = load_cell_lock_hash(4, Source::Input)?;
+    let req_sudt_x_lock_hash = load_cell_lock_hash(sudt_index, Source::Input)?;
     if req_sudt_y_lock_args.req_sudt_x_cell_lock_hash != req_sudt_x_lock_hash {
         return Err(Error::InvalidReqSUDTXLockHash);
     }
 
-    let sudt_lp_cell = load_cell(4, Source::Output)?;
-    let raw_sudt_lp_data = load_cell_data(4, Source::Output)?;
+    let sudt_lp_cell = load_cell(sudt_index, Source::Output)?;
+    let raw_sudt_lp_data = load_cell_data(sudt_index, Source::Output)?;
 
     verify_lp_output(
-        4,
+        sudt_index,
         user_lock_hash,
         &sudt_lp_cell,
         &raw_sudt_lp_data,
@@ -140,16 +147,16 @@ pub fn verify_initial_mint(
         - req_sudt_x_lock_args.tips_ckb;
 
     verify_ckb_cell(
-        5,
+        ckb_index,
         Source::Output,
         expected_ckb_capcatiy.try_into().unwrap(),
         user_lock_hash,
     )?;
 
-    let amount_x_in =
-        decode_u128(&load_cell_data(4, Source::Input)?)? - req_sudt_x_lock_args.tips_sudt_x;
+    let amount_x_in = decode_u128(&load_cell_data(sudt_index, Source::Input)?)?
+        - req_sudt_x_lock_args.tips_sudt_x;
     let amount_y_in =
-        decode_u128(&load_cell_data(5, Source::Input)?)? - req_sudt_x_lock_args.tips_sudt_y;
+        decode_u128(&load_cell_data(ckb_index, Source::Input)?)? - req_sudt_x_lock_args.tips_sudt_y;
     let amount_lp = decode_u128(&raw_sudt_lp_data)?;
 
     if BigUint::from(amount_lp) != (BigUint::from(amount_x_in) * amount_y_in).sqrt() {
@@ -184,7 +191,7 @@ fn burn_liquidity(
         return Err(Error::InvalidRemoveLpCapacity);
     }
 
-    if raw_req_lp_data.len() < 16 {
+    if raw_req_lp_data.len() < SUDT_DATA_LEN {
         return Err(Error::InvalidRemoveLpDataLen);
     }
 
@@ -200,6 +207,10 @@ fn burn_liquidity(
 
     if req_lp_lock_args.info_type_hash != info_type_hash {
         return Err(Error::InvalidRemoveLpLockArgsInfoTypeHash);
+    }
+
+    if req_lp_lock_args.version != VERSION {
+        return Err(Error::VersionDiff);
     }
 
     let sudt_x_out_data = load_cell_data(sudt_x_index, Source::Output)?;
@@ -281,6 +292,10 @@ fn mint_liquidity(
 
     let raw_lock_args: Vec<u8> = req_y_cell.lock().args().unpack();
     let req_y_lock_args = MintLiquidityRequestLockArgs::from_raw(&raw_lock_args)?;
+
+    if req_x_lock_args.version != VERSION || req_y_lock_args.version != VERSION {
+        return Err(Error::VersionDiff);
+    }
 
     verify_add_liquidity_req_cells(
         input_idx,
@@ -513,11 +528,11 @@ fn verify_add_liquidity_req_cells(
         return Err(Error::InvalidLiquidityReqYTypeHash);
     }
 
-    if load_cell_data(input_idx, Source::Input)?.len() < 16 {
+    if load_cell_data(input_idx, Source::Input)?.len() < SUDT_DATA_LEN {
         return Err(Error::InvalidLiquidityReqXDataLen);
     }
 
-    if load_cell_data(input_idx + 1, Source::Input)?.len() < 16 {
+    if load_cell_data(input_idx + 1, Source::Input)?.len() < SUDT_DATA_LEN {
         return Err(Error::InvalidLiquidityReqYDataLen);
     }
 

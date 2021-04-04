@@ -10,7 +10,9 @@ use share::ckb_std::{
 use share::{decode_u128, get_cell_type_hash};
 
 use crate::entry::utils::{verify_ckb_cell, verify_sudt_basic};
-use crate::entry::{BASE_CELL_COUNT, FEE_RATE, MIN_SUDT_CAPACITY, ONE, THOUSAND};
+use crate::entry::{
+    BASE_CELL_COUNT, FEE_RATE, MIN_SUDT_CAPACITY, ONE, SUDT_DATA_LEN, THOUSAND, VERSION,
+};
 use crate::error::Error;
 
 pub fn swap_tx_verification(
@@ -31,6 +33,10 @@ pub fn swap_tx_verification(
         let req_type_hash = get_cell_type_hash!(req_index, Source::Input);
         let user_lock_hash = req_lock_args.user_lock_hash;
 
+        if req_lock_args.version != VERSION {
+            return Err(Error::VersionDiff);
+        }
+
         let sudt_out_cell = load_cell(sudt_index, Source::Output)?;
         let sudt_out_type_hash = get_cell_type_hash!(sudt_index, Source::Output);
         let sudt_out_data = load_cell_data(sudt_index, Source::Output)?;
@@ -41,7 +47,7 @@ pub fn swap_tx_verification(
         }
 
         // req.data.len >= 16
-        if load_cell_data(req_index, Source::Input)?.len() < 16 {
+        if load_cell_data(req_index, Source::Input)?.len() < SUDT_DATA_LEN {
             return Err(Error::InvalidSwapReqDataLen);
         }
 
