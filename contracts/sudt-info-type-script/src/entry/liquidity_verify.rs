@@ -96,8 +96,8 @@ pub fn verify_initial_mint(
         return Err(Error::InvalidSUDTYTypeHash);
     }
 
-    let sudt_index = 4usize;
-    let ckb_index = 5usize;
+    let sudt_index: usize = 4;
+    let ckb_index: usize = 5;
 
     let req_sudt_x_cell = load_cell(sudt_index, Source::Input)?;
     let raw_sudt_x_lock_args: Vec<u8> = req_sudt_x_cell.lock().args().unpack();
