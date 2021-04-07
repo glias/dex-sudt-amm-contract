@@ -7,8 +7,7 @@ The Glias DEX AMM contract with SUDT and another SUDT pair.
 * [capsule](https://github.com/nervosnetwork/capsule) >= 0.4.4
 * [ckb-cli](https://github.com/nervosnetwork/ckb-cli) >= 0.39.0
 
-> Note: Capsule uses docker to build contracts and run tests. https://docs.docker.com/get-docker/
-> and docker and ckb-cli must be accessible in the PATH in order for them to be used by Capsule.
+> Note: Capsule uses [docker](https://docs.docker.com/get-docker/) to build contracts and run tests. Besides, docker and ckb-cli must be accessible in the PATH in order for them to be used by Capsule.
 
 ## Getting Start
 
@@ -58,14 +57,14 @@ pool_y_in_cell                          pool_y_out_cell
 matcher_in_cell                         matcher_out_ckb_cell
 
 [swap_request_cell]                     [sudt_swapped_cell
-                                       + ckb_change_cell]
+                                        + ckb_change_cell]
 
 [ add_liquidity_x_cell                  [sudt_lp_cell
 + add_liquidity_y_cell]                 + sudt_change_cell
-                                       + ckb_change_cell]
+                                        + ckb_change_cell]
 
 [remove_liquidity_cell]                 [sudt_x_cell
-                                       + sudt_y_cell]
+                                        + sudt_y_cell]
 ```
 
 > Notice that the witness argument of index zero in inputs should contain the count of swap request cell and the count of mint liquidity cell count. The two counts should be encoded into little-endian byte arrays and concat join them. It should be saved in the `input_type` field, except create pool transaction.
